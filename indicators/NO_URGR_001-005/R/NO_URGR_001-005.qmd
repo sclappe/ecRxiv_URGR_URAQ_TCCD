@@ -9,6 +9,8 @@ indicatorID:
   - NO_URGR_005
 indicatorName: 
   - Urban Green Areas
+  verbatimName: 
+  - Andel grønt areal 
 folderName: NO_URGR_001-005
 country: Norway
 continent: Europe
@@ -19,18 +21,16 @@ Biome:
   - T7 Intensive land-use biome
 Ecosystem: 
   - T7.4 Urban and industrial
-yearAdded: 2025 # the year when the indicator was first submitted to ecRxiv
-yearLastUpdate: 2025
+verbatimEcosystem: Bebygd og opparbeidet areal  E.g. fjell, skog, ... 
+yearAdded: 2025 
+yearLastUpdate: 2026
 status: complete # options are complete, incomplete, or deprecated
-Version: "000.002" # Beta-versions are numbers incrementally with values below 0. Operational versions can be given the version numbers above 0. Use this terms similar as for software versioning,
-VersionComment: Same as version 000.001 bu with embedded metadata and new open science badges 
+Version: "000.003" # Beta-versions are numbers incrementally with values below 0. Operational versions can be given the version numbers above 0. Use this terms similar as for software versioning,
+VersionComment: Version 000.002 reviewed with new available data
 url: https://github.com/NINAnor/ecRxiv/tree/main/indicators/NO_URGR_001-005
 Normalised: No
 SpatialAggregationPathway: Aggregate (target area; area weighted mean) - Aggregate at focal area (area weighted mean)
-AuthorList: Clappe, S., Czúcz, B.
-data_availability: bronze
-code_reproducibility: silver
-open_science_badge: bronze
+Precision: No metric available #Describe the precition metric you have used. Precision may be reported either as variation among observed values (e.g. standard deviation, variance, range, interquartile range) or as uncertainty around an estimated value (e.g. standard error, confidence interval, credible interval). 
 format: 
   html:
     embed-resources: true
@@ -51,7 +51,11 @@ author:
     email: balint.czucz@nina.no
     affiliations:
       - ref: myID
-date: 24 October 2025 
+AuthorList: Clappe, S., Czúcz, B.
+date: 13 July 2026
+data_availability: bronze
+code_reproducibility: silver
+open_science_badge: bronze
 callout-icon: false
 lightbox: true
 css: ../../../style.css
@@ -60,6 +64,14 @@ code-links:
         icon: github
         href: https://github.com/NINAnor/ecRxiv
 bibliography: references.bib
+codeReviewers:
+  - name: XXXXX
+    email: XXXXXX
+    affiliations:
+      - id: reviewerInst
+        name: XXXXXX
+    reviewType: code review
+    github: XXXXXXX
 ---
 
 
