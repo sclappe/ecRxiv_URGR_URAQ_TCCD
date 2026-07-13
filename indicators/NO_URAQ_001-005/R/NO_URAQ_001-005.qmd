@@ -143,7 +143,7 @@ if (!is.null(yaml_data$codeReviewers)) {
 }
 ```
 
-::: {layout-ncol="5"}
+::: {layout-ncol="6"}
 
 ```{r statusBadge}
 #| echo: false
@@ -152,8 +152,7 @@ status_badge(as.character(st))
 
 ```{r versionBadge}
 #| echo: false
-version_badge(my_version_number = as.character(version[[1]]),
-  folder_name = folder_name)
+version_badge(my_version_number = as.character(version[[1]]))
 ```
 
 ```{r dataBadge}
@@ -170,6 +169,13 @@ code_badge(as.character(badges[[2]]))
 #| echo: false
 open_science_badge(as.character(badges[[3]]))
 ```
+
+```{r licenseBadge}
+#| echo: false
+# The following inserts a badge specifying the GPL GNU version 3 license. ecRxiv recommends using this license, but you can decide to use another. Contact ecRxiv for help in insert a badge for a different license
+license_badge()
+```
+
 ::: 
  
 
@@ -187,23 +193,25 @@ meta |>
   dplyr::filter(Variable %in% c(
     "Indicator ID",
     "Indicator Name",
+    "verbatimName",
     "Continent",
     "Country",
     "Ecosystem Condition Typology Class", 
     "Realm",
     "Biome",
     "Ecosystem",
+    "verbatimEcosystem",
     "Year added", 
     "Last update",
     "Version",
     "Version comment",
     "Normalised",
-    "Spatial aggregation pathway")) |>   
+    "Spatial aggregation pathway",
+    "Precision")) |>   
   kable()
 
 ```
 :::
-
 
 ::: {.callout-tip collapse="true"}
 
@@ -214,7 +222,8 @@ meta |>
 - 08 September 2025 - Original PR
 - 08 October 2025 - First revision
 - 24 October 2025 - Second revision
-- 26 Nov. 2025 - Embed meta data and add open science badges. 
+- 26 Nov. 2025 - Embed meta data and add open science badges
+- 13 July 2026 - Reviewed code to include new available data
 
 :::
 
