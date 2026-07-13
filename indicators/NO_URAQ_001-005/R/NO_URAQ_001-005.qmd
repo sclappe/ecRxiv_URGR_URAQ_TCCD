@@ -9,6 +9,9 @@ indicatorID:
   - NO_URAQ_004
 indicatorName: 
   - Urban Air Quality # add more by adding another line starting '-'
+  verbatimName: 
+  - Konsentrasjon av PM2.5 partikler
+  - Concentration de particule fines PM2,5
 folderName: NO_URAQ_001-005
 country: Norway
 continent: Europe
@@ -18,19 +21,17 @@ Realm:
 Biome: 
   - T7 Intensive land-use biome
 Ecosystem: 
-  - 
-yearAdded: 2025 # the year when the indicator was first submitted to ecRxiv
-yearLastUpdate: 2025
-status: complete # options are complete, incomplete, or deprecated
-Version: "000.001" 
-VersionComment: First draft
+  - T7.4 Urban and industrial
+verbatimEcosystem: Bebygd og opparbeidet areal
+yearAdded: 2025 
+yearLastUpdate: 2026
+status: complete 
+Version: "000.002" 
+VersionComment: Version 000.001 has been reviwed with new available data.
 url: https://github.com/NINAnor/ecRxiv/tree/main/indicators/NO_URAQ_000-004
 Normalised: No
 SpatialAggregationPathway: Aggregate
-AuthorList: Clappe, S., Czúcz, B.
-data_availability: silver
-code_reproducibility: silver
-open_science_badge: silver
+Precision: No metric available #Describe the precition metric you have used. Precision may be reported either as variation among observed values (e.g. standard deviation, variance, range, interquartile range) or as uncertainty around an estimated value (e.g. standard error, confidence interval, credible interval). 
 format: 
   html:
     embed-resources: true
@@ -50,8 +51,12 @@ author:
   - name: Bálint Czúcz            #  Enter subsequent authors like this, or remove if not relevant
     email: balint.czucz@nina.no
     affiliations:
-      - ref: myID               
-date: October 24, 2025 # Enter date 
+      - ref: myID   
+AuthorList: Clappe, S., Czúcz, B.
+date: July 13, 2026 # Enter date 
+data_availability: silver
+code_reproducibility: silver
+open_science_badge: silver
 callout-icon: false
 lightbox: true
 css: ../../../style.css
@@ -61,6 +66,14 @@ code-links:
         href: https://github.com/NINAnor/ecRxiv
 bibliography: references.bib
 hide: FALSE
+codeReviewers:
+  - name: XXXXX
+    email: XXXXXX
+    affiliations:
+      - id: reviewerInst
+        name: XXXXXX
+    reviewType: code review
+    github: XXXXXXX
 ---
 
 <!--# This is a template for how to document the indicator analyses. Make sure also to not change the order, or modify, the headers, unless you really need to. This is because it easier to read if all the indicators are presented using the same layout. If there is one header where you don't have anything to write, just leave the header as is, and don't write anything below it. If you are providing code, be careful to annotate and comment on every step in the analysis. Before starting it is recommended to fill in as much as you can in the metadata file. This file will populate the initial table in your output.-->
