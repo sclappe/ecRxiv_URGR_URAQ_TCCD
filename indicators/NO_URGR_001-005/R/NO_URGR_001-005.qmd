@@ -52,7 +52,7 @@ author:
     affiliations:
       - ref: myID
 AuthorList: Clappe, S., Czúcz, B.
-date: 13 July 2026
+date: July 13, 2026
 data_availability: bronze
 code_reproducibility: silver
 open_science_badge: bronze
