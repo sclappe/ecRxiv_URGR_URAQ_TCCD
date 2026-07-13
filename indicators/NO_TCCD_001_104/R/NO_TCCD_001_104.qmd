@@ -32,18 +32,17 @@ Ecosystem:
   - T7.4 Urban and industrial
   - T7.4 Urban and industrial
   - T7.4 Urban and industrial
+verbatimEcosystem: 
+- Bebygd og opparbeidet areal
+- Bebygd og opparbeidet areal
 yearAdded: 2025 # the year when the indicator was first submitted to ecRxiv
-yearLastUpdate: 2025
+yearLastUpdate: 2026
 status: complete # options are complete, incomplete, or deprecated
 Version: "000.002" # Beta-versions are numbers incrementally with values below 0. Operational versions can be given the version numbers above 0. Use this terms similar as for software versioning,
-VersionComment: Similar to version 000.001, but with embedded metadata and new open science badges
+VersionComment: Version 000.002 reviewed with new available data.
 url: https://github.com/NINAnor/ecRxiv/tree/main/indicators/NO_TCCD_001_104
 Normalised: No
-SpatialAggregationPathway: 'Aggregation at small polygon scale within target area (TCCD area weighted mean) - Aggregation at focal area scale (mean and standard error; city, region, national scales)'
-AuthorList: Clappe, S., Czúcz, B.
-data_availability: silver
-code_reproducibility: silver
-open_science_badge: silver
+SpatialAggregationPathway: Aggregation at small polygon scale within target area (TCCD area weighted mean) - Aggregation at focal area scale (mean and standard error; city, region, national scales)
 format: 
   html:
     embed-resources: true
@@ -64,7 +63,11 @@ author:
     email: balint.czucz@nina.no
     affiliations:
       - ref: myID               # To reuse affiliations referecen the id like this
-date: October 24, 2025 # Enter date 
+AuthorList: Clappe, S., Czúcz, B.
+date: July 13, 2026 # Enter date 
+data_availability: silver
+code_reproducibility: silver
+open_science_badge: silver
 callout-icon: false
 lightbox: true
 css: ../../../style.css
@@ -74,6 +77,14 @@ code-links:
         href: https://github.com/NINAnor/ecRxiv
 bibliography: references.bib
 hide: FALSE
+codeReviewers:
+  - name: XXXXX
+    email: XXXXXX
+    affiliations:
+      - id: reviewerInst
+        name: XXXXXX
+    reviewType: code review
+    github: XXXXXXX
 ---
 
 <!--# This is a template for how to document the indicator analyses. Make sure also to not change the order, or modify, the headers, unless you really need to. This is because it easier to read if all the indicators are presented using the same layout. If there is one header where you don't have anything to write, just leave the header as is, and don't write anything below it. If you are providing code, be careful to annotate and comment on every step in the analysis. Before starting it is recommended to fill in as much as you can in the metadata file. This file will populate the initial table in your output.-->
@@ -104,6 +115,12 @@ library(hdar)
 library(DT)
 library(numform)
 
+# weird workarounds for cache issues
+conflicts_prefer(dplyr::filter)
+conflicts_prefer(dplyr::lag)
+conflicts_prefer(dplyr::select)
+pull<-dplyr::pull
+
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
@@ -111,7 +128,6 @@ knitr::opts_chunk$set(echo = TRUE)
 #| echo: false
 #| cache: false
 source(here::here("_common.R"))
-source(here::here("extract_yaml.R"))
 ```
 
 
