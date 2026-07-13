@@ -21,7 +21,7 @@ Biome:
   - T7 Intensive land-use biome
 Ecosystem: 
   - T7.4 Urban and industrial
-verbatimEcosystem: Bebygd og opparbeidet areal  E.g. fjell, skog, ... 
+verbatimEcosystem: Bebygd og opparbeidet areal
 yearAdded: 2025 
 yearLastUpdate: 2026
 status: complete # options are complete, incomplete, or deprecated
