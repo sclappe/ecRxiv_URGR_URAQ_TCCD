@@ -8,9 +8,10 @@ indicatorID:
   - NO_URGR_004
   - NO_URGR_005
 indicatorName: 
-  - Urban Green Areas
+  - Share of Urban Green Areas
   verbatimName: 
   - Andel grønt areal 
+  - Part des espaces verts urbains
 folderName: NO_URGR_001-005
 country: Norway
 continent: Europe
@@ -89,6 +90,13 @@ library(readxl)
 library(numform)
 library(DT)
 library(here)
+
+# weird workarounds for cache issues
+conflicts_prefer(dplyr::filter)
+conflicts_prefer(dplyr::lag)
+conflicts_prefer(dplyr::select)
+pull<-dplyr::pull
+
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
@@ -96,7 +104,6 @@ knitr::opts_chunk$set(echo = TRUE)
 #| echo: false
 #| cache: false
 source(here::here("_common.R"))
-source(here::here("extract_yaml.R"))
 ```
 
 

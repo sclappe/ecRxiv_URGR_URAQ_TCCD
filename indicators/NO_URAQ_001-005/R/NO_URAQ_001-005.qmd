@@ -104,6 +104,12 @@ library(carrier)
 library(DT)
 library(numform)
 
+# weird workarounds for cache issues
+conflicts_prefer(dplyr::filter)
+conflicts_prefer(dplyr::lag)
+conflicts_prefer(dplyr::select)
+pull<-dplyr::pull
+
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
@@ -112,7 +118,6 @@ knitr::opts_chunk$set(echo = TRUE)
 #| echo: false
 #| cache: false
 source(here::here("_common.R"))
-source(here::here("extract_yaml.R"))
 ```
 
 
