@@ -375,13 +375,108 @@ We used the following six datasets:
 
 * **D-4** *DEGURBA*  (Degree of urbanisation) A tabular dataset assigning one of three DEGURBA classes (1: "cities"; 2: "towns and suburbs"; 3: "rural areas") to each municipality. These classes were used to breakdown the results for URAQ_001-004.
 
+
 ### 7.1 PM2.5 dataset (D-1)
+We downloaded the data for the years 2016 to 2024 from met.no catalogue. These data could not be loaded in the R environment directly through an API, they could only be downloaded (at the time the code was developed). We stored them on NINA's internal shared drive. To use our code more easily, we invite the users to download the data and modify the data path we provide below:
+
+```{r}
+#| eval: false
+#| code-summary: "PM2.5 data path"
+
+pm25_path <- "/data/P-Prosjekter2/412413_2023_no_egd/git_data/PM2.5/National"
+
+```
+
+We have nine rasters to load, we first create a list of files before reading them and storing them in a list object.
+
+```{r}
+#| eval: false
+#| code-summary: "Read and stor PM2.5 data"
+# List the gdb files
+pm25_files <- list.files(pm25_path, pattern = ".nc$", 
+                         full.names = TRUE)
+
+# Read data with gdb files
+pm25_data <- pm25_files %>% 
+                 map(\(.) rast(.)) 
+
+# Name the layers
+names(pm25_data) <- str_extract(pm25_files, "(?<=annualmean_).{4}")
+```
+
+
+
+We can now read in the PM2.5 concentration maps (D-1) for each of the municipalities. As the PM2.5 maps are available from met.no using an API, we first create a list of the maps that should be accessed before retrieving the data through the API. The PM2.5 maps are retrieved in .tif format. Note that the data have to be called through the API and written on the disk. Due to their format, they could not be loaded in the R environment. The code below shows how to retrieve the data and write them on a chosen folder in your computer. If you do not need to run this code, go to the next step.
+```{r}
+#| eval: false
+#| code-summary: "Load PM2.5 concentration maps and store them on disk"
+
+## Create list of urls
+
+# Base url
+begin_url <- "https://airquality-expert.met.no/airqualityexpert/0.2/map/"
+end_url <- "/pm25_concentration_annualmean.tif"
+
+# List of municipalities numbers
+path_lau_2024 <- paste0(path_lau_folder, "LAU_EUROSTAT_2024.shp")
+lau_2024 <- st_read(path_lau_2024)
+
+lau_nb <- unique(lau_2024$k__2024) %>%
+            sprintf("%04i",.) # 4-digits w padding zeros (e.g. "0301")
+
+
+# List the years of interest
+yrs <- seq(2016, 2023, 1)
+
+# Create the urls
+url_list <- map(seq_along(yrs), 
+                ~ map_chr(seq_along(lau_nb), 
+                          function(y) {paste0(begin_url,
+                                       lau_nb[y],
+                                       "/",
+                                       yrs[.x],
+                                       end_url)}
+                          )
+                )
+
+##  API query- source the function to retrieve the data and write them on the disk: api_fetch_data
+source(paste0(path_fn,"/NO_URAQ_functions.R"))
+
+
+## Retrieve and write the PM2.5 data on the disk
+map(seq_along(yrs), 
+    ~ map(seq_along(lau_nb), function(y) {
+      api_fetch_data(yrs, 
+                     lau_nb, 
+                     yrs[.x], 
+                     lau_nb[y], 
+                     out_path = "/data/P-Prosjekter2/412413_2023_no_egd/git_data/PM2.5/",
+                     url_list = url_list)}
+      )
+    )
+
+api_fetch_data(yrs, lau_nb, 2016, "1508", 
+               out_path= "/data/P-Prosjekter2/412413_2023_no_egd/git_data/PM2.5/",
+               url_list = url_list)
+
+## Clean the R environment
+rm(list = setdiff(ls(), 
+                  c("path_degurba",
+                    "path_kom",
+                    "path_kom_nb",
+                    "path_lau",
+                    "path_lau_folder",
+                    "path_grunnkart",
+                    "res_path",
+                    "soaa_lau_inter",
+                    "lau_dgurb",
+                    "yrs",
+                    "lau_nb")))
+```
 
 ### 7.2 Grunnkart (D-2)
 
-### 7.3 LAU (D-3)
-
-### 7.4 DEGURBA (D-4)
+### 7.3 LAU (D-3) and DEGURBA (D-4)
 
 
 ## 8. Spatial units
