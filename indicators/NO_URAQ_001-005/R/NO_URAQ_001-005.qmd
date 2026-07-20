@@ -53,7 +53,7 @@ author:
     affiliations:
       - ref: myID   
 AuthorList: Clappe, S., Czúcz, B.
-date: July 13, 2026 # Enter date 
+date: July 20, 2026 # Enter date 
 data_availability: silver
 code_reproducibility: silver
 open_science_badge: silver
@@ -103,6 +103,7 @@ library(exactextractr)
 library(carrier)
 library(DT)
 library(numform)
+library(conflicted)
 
 # weird workarounds for cache issues
 conflicts_prefer(dplyr::filter)
@@ -223,7 +224,7 @@ meta |>
 - 08 October 2025 - First revision
 - 24 October 2025 - Second revision
 - 26 Nov. 2025 - Embed meta data and add open science badges
-- 13 July 2026 - Reviewed code to include new available data
+- 20 July 2026 - Reviewed code to include new available data
 
 :::
 
@@ -234,10 +235,13 @@ meta |>
 
 ## 1. Summary
 
-
+1. **Background and rationale**:
 Air quality can be measured by the presence of various pollutants in the air. Here we focused on PM2.5, i.e. the concentration of very small solid particles (particulate matter) in the air, which have a diameter under 2.5 $\mu$m. This is in line with the EU Regulation on Environmental Economic Accounting (@eu-2024-3024), which lists PM2.5 among the mandatory ecosystem condition indicators to characterise the condition of the ecosystem type *settlements and other artificial areas* (ET01, henceforward "urban ecosystems" for short). The annual concentration of PM2.5 is also a recognised national environmental indicator in Norway (Miljøindikator 4.6.2). 
 
-In principle, there could be many other similar  air quality indicators calculated for urban ecosystems (one for each relevant pollutant). Nevertheless, these  indicators would definitely be correlated with each other, and the degree to which *air quality* metrics match the definition and selection criteria for *ecosystem condition* variables is also questionable (@Czucz2025a). Accordingly, here we only present calculations for PM2.5.  
+In principle, there could be many other similar  air quality indicators calculated for urban ecosystems (one for each relevant pollutant). Nevertheless, these indicators would definitely be correlated with each other, and the degree to which *air quality* metrics match the definition and selection criteria for *ecosystem condition* variables is also questionable (@Czucz2025a). Accordingly, here we only present calculations for PM2.5.  
+
+2. **Methods**:
+We used three data sources: (i) the official Norwegian ecosystem map (Grunnkart) produced by NIBIO; (ii) the PM2.5 raster for the whole of Norway produced by the Norwegian Meteorological Institute, and (iii) Local Administrative Units produced by Eurostat (municipalities boundaries).
 
 There are 2 major steps in calculating urban air quality indicators for a selected reference period and ecosystem accounting area (EAA):
 
@@ -245,25 +249,25 @@ There are 2 major steps in calculating urban air quality indicators for a select
 
 2. Calculate the mean concentration of the selected pollutant (PM2.5) within this area (for the selected accounting period).
 
-There are several ways of defining the *target area*. Accordingly, in this document, we present five different variants of the indicator based on different definitions of the *target area*. Besides offering a flexible approach for performing the "right" calculation for every reporting context, these variants are also aligned across other *urban* ecosystem condition variables (URGR, TCCD), thus making it easier to establish consistency across the different variables and their policy use. 
+There are several ways of defining the *target area*. In this document, we present five different variants of the indicator based on different definitions of the *target area*. Besides offering a flexible approach for performing the "right" calculation for every reporting context, these variants are also aligned across other *urban* ecosystem condition variables (URGR, TCCD), thus making it easier to establish consistency across the different variables and their policy use. 
 
 
-### 1.1 Interpretation
+3. **Interpretation**:
 This indicator is not normalised so its values start from 0 and go above 1. The higher the value, the higher the concentration of PM2.5 in the air. Globally, we can say that a value of 0 means that the urban ecosystem is in greater ecological condition than if the value above 0. It is difficult to set meaningful ranges to determine intervals within which PM2.5 values are detrimental.
 
-### 1.2 Overview of the different indicator versions
+4. **Results and development needs**:
+Overview of the five indicators that we calculated in this document. For a national use we recommend to use **URAQ_005**, which is most aligned with the SEEA EA (@seea-ea) among the five versions presented. Nevertheless, for official EU reporting the calculation of **URAQ_002** is the most appropriate, as long as the guidelines in the Ecosystem accounts handbook from Eurostat (@handbook2026) stay unchanged. We also provide three other indicators **URAQ_001**, **URAQ_003** and **URAQ_004**. Together with **URAQ_002**, they all use diverse ecosystem accounting areas (EAAs). Comparing them might be useful for the additional analytical insights, notably by distinguishing the different types of settlements according to their degree of urbanisation.  
 
-* **URAQ_005**: The *target area* is the total area of the ecosystem type ET01 (*Settlements and other artificial areas*) in Norway. This is the option which is most aligned with the principles of SEEA EA (@seea-ea), where an ecosystem condition indicators are expected to be representative of their "parent" ecosystem type (see also @Czucz2025a). 
+* **URAQ_001**: The *target area* is the *entire area* of the municipalities considered as "cities" according to Eurostat DEGURBA classification (`DEGURBA = 1`). As the total area of Norwegian municipalities is typically dominated by natural ecosystems (forests, wetlands, mountains, etc.) this option actually contradicts key principles of ecosystem accounting (i.e., the pollutant concentrations in a forest should be considered as the condition of the forest, not that of a potentially distant urban area).  
 
-* **URAQ_002**: The *target area* is the area of the ecosystem type ET01 (*Settlements and other artificial areas*) within the municipalities considered as *"cities"* according to Eurostat's degree of urbanisation (DEGURBA) classification (`DEGURBA = 1`). This is the preferred option for calculating the mandatory Eurostat indicator according to Eurostat's guidelines (@cond-gn-eurostat2025). 
+* **URAQ_002**: The *target area* is the area of the ecosystem type ET01 (*Settlements and other artificial areas*) within the municipalities considered as *"cities"* according to Eurostat's degree of urbanisation (DEGURBA) classification (`DEGURBA = 1`). This is the preferred option for calculating the mandatory Eurostat indicator according to Eurostat's guidelines (@handbook2026). 
 
 * **URAQ_003**: The *target area* is the area of the ecosystem type ET01 (*Settlements and other artificial areas*) within the municipalities considered as "towns and suburbs" according to Eurostat's DEGURBA classification (`DEGURBA = 2`).
 
-* **URAQ_004**: The *target area* is the area of the ecosystem type ET01 (*Settlements and other artificial areas*) within the municipalities considered as "rural areas" according to Eurostat DEGURBA classification (`DEGURBA = 3`). URAQ_032 and URAQ_004 are complementary to URAQ_002, they present an overview of the air pollution status of the three main types of municipalities in Norway. The area-weighted mean of these three indicators (URAQ_002-URAQ_004, weighted by the total area of settlements (ET01) in the respective categories) will be equal to URAQ_004 for any reporting period.  
+* **URAQ_004**: The *target area* is the area of the ecosystem type ET01 (*Settlements and other artificial areas*) within the municipalities considered as "rural areas" according to Eurostat DEGURBA classification (`DEGURBA = 3`). URAQ_003 and URAQ_004 are complementary to URAQ_002, they present an overview of the air pollution status of the three main types of municipalities in Norway. The area-weighted mean of these three indicators (URAQ_002-URAQ_004, weighted by the total area of settlements (ET01) in the respective categories) will be equal to URAQ_004 for any reporting period.  
 
-* **URAQ_001**: The *target area* is the *entire area* of the municipalities considered as "cities" according to Eurostat DEGURBA classification (`DEGURBA = 1`). As the total area of Norwegian municipalities is typically dominated by natural ecosystems (forests, wetlands, mountains, etc.) this option actually contradicts key principles of ecosystem accounting (i.e., the pollutant concentrations in a forest should be considered as the condition of the forest, not that of a potentially distant urban area). Nevertheless this option is currently listed as the second (less recommended) option in Eurostat's guidelines (@cond-gn-eurostat2025) for calculating the mandatory indicator in the EU regulation. 
+* **URAQ_005**: The *target area* is the total area of the ecosystem type ET01 (*Settlements and other artificial areas*) in Norway. This is the option which is most aligned with the principles of SEEA EA (@seea-ea), where an ecosystem condition indicators are expected to be representative of their "parent" ecosystem type (see also @Czucz2025a). 
 
-For a national use we recommend to use URAQ_005, which is most aligned with SEEA EA among the five versions presented. Nevertheless, for official EU reporting the calculation of URAQ_002 may also be necessary, as long as the current draft guidance from Eurostat (@cond-gn-eurostat2025) will stay unchanged. The calculation of URAQ_002--URAQ_004 for diverse ecossytem accounting areas (EAAs) might also be useful for the additional analytical insight offered by distinguishing the different types of settlements according to their degree of urbanisation.   
 
 
 ## 2. About the underlying data
