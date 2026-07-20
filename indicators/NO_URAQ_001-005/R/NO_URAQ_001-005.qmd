@@ -256,7 +256,7 @@ There are several ways of defining the *target area*. In this document, we prese
 This indicator is not normalised so its values start from 0 and go above 1. The higher the value, the higher the concentration of PM2.5 in the air. Globally, we can say that a value of 0 means that the urban ecosystem is in greater ecological condition than if the value above 0. It is difficult to set meaningful ranges to determine intervals within which PM2.5 values are detrimental.
 
 4. **Results and development needs**:
-Overview of the five indicators that we calculated in this document. For a national use we recommend to use **URAQ_005**, which is most aligned with the SEEA EA (@seea-ea) among the five versions presented. Nevertheless, for official EU reporting the calculation of **URAQ_002** is the most appropriate, as long as the guidelines in the Ecosystem accounts handbook from Eurostat (@handbook2026) stay unchanged. We also provide three other indicators **URAQ_001**, **URAQ_003** and **URAQ_004**. Together with **URAQ_002**, they all use diverse ecosystem accounting areas (EAAs). Comparing them might be useful for the additional analytical insights, notably by distinguishing the different types of settlements according to their degree of urbanisation.  
+Overview of the five indicators that we calculated in this document. For a national use we recommend to use **URAQ_005**, which is most aligned with the System of Environmental Economic Accounting - Ecosystem Accounting (SEEA EA; @seea-ea) among the five versions presented. Nevertheless, for official EU reporting the calculation of **URAQ_002** is the most appropriate, as long as the guidelines in the Ecosystem accounts handbook from Eurostat (@handbook2026) stay unchanged. We also provide three other indicators **URAQ_001**, **URAQ_003** and **URAQ_004**. Together with **URAQ_002**, they all use diverse ecosystem accounting areas (EAAs). Comparing them might be useful for the additional analytical insights, notably by distinguishing the different types of settlements according to their degree of urbanisation.  
 
 * **URAQ_001**: The *target area* is the *entire area* of the municipalities considered as "cities" according to Eurostat DEGURBA classification (`DEGURBA = 1`). As the total area of Norwegian municipalities is typically dominated by natural ecosystems (forests, wetlands, mountains, etc.) this option actually contradicts key principles of ecosystem accounting (i.e., the pollutant concentrations in a forest should be considered as the condition of the forest, not that of a potentially distant urban area).  
 
@@ -275,126 +275,88 @@ Overview of the five indicators that we calculated in this document. For a natio
 
 We use the following two main datasets for our calculations: 
 
-* **PM2.5 concentration**: Raster maps with mean annual PM2.5 concentrations at municipal level. The PM2.5 dataset is produced using pollution transport models based on measurements from Norwegian air quality monitoring stations by the Norwegian Meteorological Institute (@Denby2020). It's important to note that air quality monitoring in Norway is focused on urban areas and high-traffic locations where pollution levels are a concern.
+* **PM2.5 concentration**: Raster maps with mean annual PM2.5 concentrations at national level. The PM2.5 dataset is produced using the EMEP (large scale chemistry and transport model) and uEMEP (local dispersion model) which are validated with measurements from Norwegian air quality monitoring stations by the Norwegian Meteorological Institute (@Denby2020; @Wærsted2025). It's important to note that air quality monitoring in Norway is focused on urban areas and high-traffic locations where pollution levels are a concern.
 
 * **Grunnkart**: Norway's official *ecosystem type map* designed to support ecosystem accounting (@strand2024; @gk2). This map aims to implement Eurostat's EU ecosystem typology (@et-typo-eurostat) for Norway. Here we use this map for delineating the area of ecosystem type ET01 (*Settlements and other artificial areas*).
 
-In addition we use several further administrative datasets to delineate the individual municipalities (i.e. Local Administrative Units, LAU), as well as to determine their "degree of urbanisation" (DEGURBA), and to assign them to regions (counties, "fylke").
+In addition we use several further administrative datasets to delineate the individual municipalities (i.e. Local Administrative Units; LAU), as well as to determine their "degree of urbanisation" (DEGURBA), and to assign them to regions (counties, "fylke").
 
 
 ### 2.1 Spatial and temporal resolution and extent
-<!--# Describe the temporal and spatial resolution and extent of the data used -->
 
-Data on annual mean *PM2.5 concentration* are available with a 100 m resolution for the total land area of each Norwegian municipality. The data only covers continental Norway, Svalbard is not included. 
+Data on annual mean *PM2.5 concentration* are rasters of a 100m x 100m resolution for the the whole of Norway (excluding Svalbard).
 
-All other spatial data files, including the *Grunnkart* and the *Local Administrative Units* (LAU) are vector data (polygons). Unlike traditional land cover maps (e.g. Corine Land Cover), the Grunnkart does not have a single, universal Minimum Mapping Unit (MMU). Instead, the spatial resolution of the Grunnkart is directly inherited from the underlying source datasets used in its creation. This is because the new map is a synthesis and reclassification of existing data rather than a new, independent mapping effort. As the majority of spatial information available in public datasets focuses on human settlements and infrastructure, urban ecosystems are relatively finely represented in the Grunnkart, especially compared to seminatural and natural ecosystem types. This makes the contours of ET01 overly-detailed, often delineating individual buildings or roads passing through a forest as "urban ecosystems". This also makes the dataset somewhat unfit for its purpose (@Rendon2025) and cumbersome to process. 
-
+The *Grunnkart* and the *Local Administrative Units* (LAU) are vector data (polygons). Unlike traditional land cover maps (e.g. Corine Land Cover), the Grunnkart does not have a single, universal Minimum Mapping Unit (MMU). Instead, the spatial resolution of the Grunnkart is directly inherited from the underlying source datasets used in its creation. This is because the new map is a synthesis and reclassification of existing data rather than a new, independent mapping effort. As the majority of spatial information available in public datasets focuses on human settlements and infrastructure, urban ecosystems are relatively finely represented in the Grunnkart, especially compared to semi-natural and natural ecosystem types. This makes the contours of ET01 overly-detailed, often delineating individual buildings or roads passing through a forest as "urban ecosystems". This also makes the dataset somewhat unfit for its purpose (@Rendon2025) and cumbersome to process. 
 
 
 ### 2.2 Original units
-<!--# What are the original units for the most relevant variables in the data-->
-
 PM2.5 concentrations are expressed in $\mu$g/m^3^, the values reflect estimated annual average concentration for each map pixel. 
 
 ### 2.3 Additional comments about the dataset
-
-The actual boundaries of the municipalities were patched together from two sources: Eurostat Local Administrative Units (2023) and Kartverkert national municipalities boundaries (2024) (see more details in Section 9). The DEGURBA dataset we only used to classify the Norwegian municipalities into three categories (1: "cities", 2: "towns and suburbs", 3: "rural areas") based on their degree of urbanisation. 
+The DEGURBA dataset was used to classify the Norwegian municipalities into three categories (1: "cities", 2: "towns and suburbs", 3: "rural areas") based on their degree of urbanisation. This data are produced by Eurostat.
 
 
 #### 2.3.1 Instructions for citing, using and accessing data
-<!--# Is the data openly available? If not, how can one access it? What are the key references to the datasets?   -->
-
 ||Publicly accessible to download| Data and metadata available Available at|
 |----|--|--------|
-| **PM2.5 concentration maps**  | Yes | Description available at [met.no](^https://airquality-expert.met.no/$) and in Denby et al. (2020). Data available via API at [met.no](^https://airquality-expert.met.no/$)  |
+| **PM2.5 concentration maps**  | Yes | Description available at [met.no](^https://www.met.no/prosjekter/luftkvalitet/dokumentasjon-av-luftkvalitetsmodellen$) and in Denby et al. (2020). Data available via data catalogue at [met.no](^https://thredds.met.no/thredds/catalog/data/fou-kl/uEMEP/for_NTNU/catalog.html$)  |
 **Grunnkart**  | No, only upon request to [NIBIO](^https://kartkatalog.geonorge.no/metadata/nasjonalt-grunnkart-for-arealanalyse-testversjon-2/28c28e3a-d88f-4a34-8c60-5efe6d56a44d$) | We used testversion 0.2, description available in @gk2 and @strand2024|
 | **EU data about the municipalities**  | Yes | Data and description available from Eurostat: [LAU](^https://ec.europa.eu/eurostat/web/gisco/geodata/statistical-units/local-administrative-units$) and [DEGURBA](https://ec.europa.eu/eurostat/web/nuts/local-administrative-units) |
-| **Norwegian data about the municipalities**  | Yes | Data available from Kartverkert: [boundaries](^https://kartkatalog.geonorge.no/metadata/administrative-enheter-kommuner/041f1e6e-bdbc-4091-b48f-8a5990f3cc5b$) and [identifiers](^https://www.kartverket.no/til-lands/fakta-om-norge/norske-fylke-og-kommunar$) |
 
 
 ## 3. Indicator properties
 
 ### 3.1 Ecosystem Condition Typology Class (ECT)
-<!--# Describe the rationale for assigning the indicator to the ECT class. See https://oneecosystem.pensoft.net/article/58218/
-This doesnt need to be very long. Maybe just a single sentence. -->
-
 The presence of chemical pollutants in urban ecosystems can be considered as a *pressure variable* (which then would imply that this variable should be excluded from ecosystem condition accounts). Alternatively, this variable can also be considered a *condition variable* under ECT type A2 (abiotic chemical condition characteristics).
 
 ### 3.2 Ecosystem condition characteristic
-
-
 If the "local air mass" is considered to be part of the local ecosystem (as one of its "abiotic compartments"), then PM2.5 can chararcterise the chemical condition (pollutedness, intactness) of this compartment. 
 
 
 ### 3.3 Other standards
-In this documentation, we present different variations of the air quality indicator based on PM2.5 concentration. We recommend to use URAQ_005 as it relies upon the most ecologically correct definition, in line with the System of Environmental Economic Accounting - Ecosystem Accounting (@seea-ea). It however does not follow the official guidance from the European Commission for national reporting under EU Regulation 2024/3024 (@eu-2024-3024). If users need to report this indicator in an official EU reporting, we recommend to use URAQ_001.
+In this documentation, we present different variations of the air quality indicator based on PM2.5 concentration. We recommend to use **URAQ_005** as it relies upon the most ecologically correct definition, in line with the SEEA EA (@seea-ea). It however does not follow the official guidance from the European Commission for national reporting under EU Regulation 2024/3024 (@eu-2024-3024). If users need to report this indicator in an official EU reporting, we recommend to use **URAQ_002**.
 
 
 
 ### 3.4 Collinearities with other indicators
-This indicator might present some correlations with the Tree Cover Density and Urban Green Areas indicators. Green urban ecosystems provide the air filtration service which allows to decrease the concentration of PM2.5 in the air. Hence a correlation between this indicators and any other condition indicators directly and indirectly including green urban ecosystems in their calculations.
+This indicator might present some correlations with the Tree Cover Density and Urban Green Areas indicators. Green urban ecosystems provide the air filtration service which allows to decrease the concentration of PM2.5 in the air. Hence a correlation between URAQ indicators and any other condition indicators directly and indirectly including green urban ecosystems in their calculations.
 
 If additional air pollutants (e.g., tropospheric ozone) were used to quantify separate ecosystem condition variables then these variables would definitely be highly correlated.    
 
 
 ### 3.5 Impact factors
-<!--# Describe the main natural and anthropogenic factors that affects the metric -->
 The concentration of PM2.5 in the air is entirely due to anthropogenic factors. A part of PM2.5 are emitted directly as solid particles from various sources, such as construction sites, unpaved roads, fields, smokestacks or fires. Another, potentially even more significant fraction of the PM2.5 particles are formed in the atmosphere from gaseous pollutants, such as sulfur dioxide or nitrogen oxides, emitted from power plants, industries, and automobiles. Vegetation, including (semi)natural ecosystem types, and urban green areas can positively impact (i.e. reduce) PM2.5 concentrations through the air filtration service provided by these ecosystems.
 
 
 ## 4. Reference condition and levels
 
 ### 4.1 Reference condition
-
 In general it is difficult to set a *reference condition* for anthropogenic ecosystems. In such cases it is often recommended to consider a  theoretical "anthropogenically derived" (SEEA EA 5.72) or "best attainable" reference condition (@valecillo2022) instead, for which there is often no "prototype" available, so the best way to operationalise this type of reference condition is to determine optimal reference levels (X~100~) for each variable independently (@Czucz2025b), which is discussed below. 
 
 
 ### 4.2 Reference levels
-
-
 Similarly to most other pollutants and other "negative" condition variables, a zero value (no pollutants present) can be considered as a meaningful value for the "optimal" *reference level* (X~100~) of PM2.5. 
 
 In principle it could be possible to assign further reference levels (e.g. X~60~, X~0~) based on limit values (greseverdier), criteria (luftkvalitetskriterier), or national targets set by Norway's Pollution Control Regulations (Forurensningsforskriften), the Norwegian Institute of Public Health (Folkehelseinstituttet), the Norwegian Environment Agency (Miljødirektoratet), or the World Health Organization (WHO). Norway also has a national target related to the annual concentration of PM2.5, which is 8 $\mu$g/m^3^. Nevertheless, in the case of this variable, identifying the right values for the reference levels is not a purely ecologist task, and in the context of the current project the necessary interdisciplinary understanding was not achieved.  
 
 
 #### 4.2.1 Spatial resolution and validity
-<!--# Describe the spatial resolution of the reference levels. E.g. is it defined as a fixed value for all areas, or does it vary. Also, at what spatial scale are the reference levels valid? For example, if the reference levels have a regional resolution (varies between regions), it might mean that it is only valid and correct to use for normalising local variable values that are first aggregated to regional scale. However, sometimes the reference levels are insensitive to this and can be used to scale variables at the local (e.g. plot) scale. -->
-X~100~ (the null value of PM2.5) can be seen as a universal reference level, which is valid for any occurrences and subtypes of ET01 (in any type of settlement) at any spatial resolution over all Norway. Nevertheless, if there will be any further reference levels determined for PM2.5 in the future they will also probably be universal reference levels -- nevertheless the environmental norms are defined at the local level (directly for the air quality station measurements), so if the reference levels will be linked to them, then they will also need to be applied at the local level. (i.e., pixel level data will need to be rescaled first, before spatial aggregation.) 
+X~100~ (the null value of PM2.5) can be seen as a universal reference level, which is valid for any occurrences and subtypes of ET01 (in any type of settlement) at any spatial resolution over all Norway. Nevertheless, if there will be any further reference levels determined for PM2.5 in the future they will also probably be universal reference levels -- nevertheless the environmental norms are defined at the local level (directly for the air quality station measurements), so if the reference levels will be linked to them, then they will also need to be applied at the local level (i.e., pixel level data will need to be rescaled first, before spatial aggregation.) 
 
 ## 5. Uncertainties
-<!--# Describe the main uncertainties or sources of error in the indicator or the underlying data. -->
-
 There are several sources of uncertainties affecting the values of this indicator and its subsequent use:
 
-- <u>data uncertainties in PM2.5</u>: The main input data (PM2.5) are model outputs relying on relatively few point-wise ground observations (according to @Denby2020 there are only 33 PM2.5 monitoring stations in the entire country). Accordingly, the wall-to-wall dataset of modelled annual mean values will inevitably contain a high level of uncertainty, especially farther away from the main urban centres where the monitoring stations lie. 
+- <u>data uncertainties in PM2.5</u>: these data rely on the EMEP–uEMEP modelling framework. EMEP is a regional chemistry transport model that simulates emissions, atmospheric transport, chemical transformation and deposition of pollutants, while uEMEP is a high-resolution Gaussian dispersion downscaling model that estimates local-scale contributions from emission sources such as traffic, residential wood combustion, shipping and industry. Data inputs are distributed emissions, meteorological data from a weather model, and geographic and land-surface data. Ground-truth air quality measurement from monitoring stations are used only at the validation steps of the model. Inevitably the model contains a high level of uncertainty, but these were not quantified by the data provider.
 
-- <u>spatial, temporal and semantic uncertainties of the Grunnkart</u>: the current Grunnkart combines many different static data sources with various temporal reference dates, which does not seem to present an easily reproducible and updatable data source. This means that the outlines of the urban ecosystems (ET01) contain an unknown amount of uncertainty ("ad-hoc-ness"). As Grunnkart is currently a static dataset, we used for the entire study period the only available timeline (which itself relies on temporally heterogeneous sources in an undocumented way). 
+- <u>spatial, temporal and semantic uncertainties of the Grunnkart</u>: the current Grunnkart combines many different static data sources with various temporal reference dates, which does not seem to present an easily reproducible and updatable data source. This means that the outlines of the urban ecosystems (ET01) contain an unknown amount of uncertainty ("ad-hoc-ness"). The Grunnkart is currently a static dataset whose timeline has not been clearly documented as relying on temporally heterogeneous sources. Neverthless, we used it for the entire study period.
 
-- <u>uncertainty of defining the target area</u>: the indicators presented in this document have been compiled in accordance with different interpretations of the urban areas, see more in Section 1.1. In particular, the instructions by @cond-gn-eurostat2025 outline two different calculation methods for the indicator, neither of which aligns well with SEEA EA principles. From the perspective of consistent reporting this can be seen as a spectacular high level uncertainty.
+- <u>uncertainty of defining the target area</u>: the indicators presented in this document have been compiled in accordance with different interpretations of the urban areas, see more in Section 1.1. The instructions outlined in @handbook2026 do not align well with SEEA EA principles. All the URAQ indicators present a different definition of the EEA, which greatly impact sthe results and is thus an important source of uncertainty.
 
 
 ## 6. References
-<!--# You can add references manually or use a citation manager and add intext citations as with crossreferencing and hyperlinks. See https://quarto.org/docs/authoring/footnotes-and-citations.html -->
 
 ::: {#refs}
 :::
-
-<!-- Aune-Lundberg, L., Steinnes, M., Lund, M.O., Arneberg, E. & Munsterhjelm, N. 2025. Testversjon 2 – Nasjonalt grunnkart for bruk i arealregnskap. NIBIO Rapport 11/50/2025. (in Norwegian) -->
-
-<!-- Czúcz, B., Framstad, E., Clappe, S. & Nowell, M. 2025a. Exploring the use of Eurostat’s mandatory and voluntary indicators in Norway. NINA Report 2604. Norwegian Institute for Nature Research. -->
-
-<!-- Czúcz, B., Lappalainen, M., Jernberg, S., Korpinen, S. 2025b. Report on definition of reference conditions that describe good ecosystem condition. SELINA Deliverable 3.3. https://project-selina.eu/  -->
-
-<!-- Denby, B. R., Gauss, M., Wind, P., Mu, Q., Grøtting Wærsted, E., Fagerli, H., Valdebenito, A., & Klein, H. (2020). Description of the uEMEP_v5 downscaling approach for the EMEP MSC-W chemistry transport model. Geoscientific Model Development, 13(12), 6303–6323. https://doi.org/10.5194/gmd-13-6303-2020 -->
-
-<!-- Eurostat 2024. EU Ecosystem typology. Technical Note. Version: September 2024. Eurostat. Supplementary document to Doc. ENV/EA/TF/2024_3/2a. -->
-
-<!-- Eurostat 2025. Ecosystem Condition Accounts – Guidance Note, 6^th^ Draft. Eurostat Unit E2, Task Force on Ecosystem Accounting, 26-27 February 2025. Doc. ENV/EA/TF/2025_1/2. https://circabc.europa.eu/ui/group/922b4700-1c83-4099-b550-763badab3ec0/library/5074c555-99ea-4931-ace8-9351fa174f8b -->
-
-<!-- Strand, G.-H., Steinnes, M., Arneberg, E., Lund, M.O., Munsterhjelm, N., Aune-Lundberg, L. & Rørholt, A. 2024. Grunnkart for bruk i arealregnskap. NIBIO Rapport 10/28/2024. (in Norwegian) -->
-
-<!-- UN et al. 2024. System of Environmental Economic Accounting – Ecosystem Accounting. United Nations, Department of Economic and Social Affairs, Statistics Division. Statistical Papers, Series F No. 124. -->
-
 
 
 ## 7. Datasets
