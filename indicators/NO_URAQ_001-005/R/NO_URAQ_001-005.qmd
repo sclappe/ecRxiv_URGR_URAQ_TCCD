@@ -344,14 +344,17 @@ In principle it could be possible to assign further reference levels (e.g. X~60~
 X~100~ (the null value of PM2.5) can be seen as a universal reference level, which is valid for any occurrences and subtypes of ET01 (in any type of settlement) at any spatial resolution over all Norway. Nevertheless, if there will be any further reference levels determined for PM2.5 in the future they will also probably be universal reference levels -- nevertheless the environmental norms are defined at the local level (directly for the air quality station measurements), so if the reference levels will be linked to them, then they will also need to be applied at the local level (i.e., pixel level data will need to be rescaled first, before spatial aggregation.) 
 
 ## 5. Uncertainties
+### 5.1 General uncertainties
 There are several sources of uncertainties affecting the values of this indicator and its subsequent use:
 
 - <u>data uncertainties in PM2.5</u>: these data rely on the EMEP–uEMEP modelling framework. EMEP is a regional chemistry transport model that simulates emissions, atmospheric transport, chemical transformation and deposition of pollutants, while uEMEP is a high-resolution Gaussian dispersion downscaling model that estimates local-scale contributions from emission sources such as traffic, residential wood combustion, shipping and industry. Data inputs are distributed emissions, meteorological data from a weather model, and geographic and land-surface data. Ground-truth air quality measurement from monitoring stations are used only at the validation steps of the model. Inevitably the model contains a high level of uncertainty, but these were not quantified by the data provider.
 
 - <u>spatial, temporal and semantic uncertainties of the Grunnkart</u>: the current Grunnkart combines many different static data sources with various temporal reference dates, which does not seem to present an easily reproducible and updatable data source. This means that the outlines of the urban ecosystems (ET01) contain an unknown amount of uncertainty ("ad-hoc-ness"). The Grunnkart is currently a static dataset whose timeline has not been clearly documented as relying on temporally heterogeneous sources. Neverthless, we used it for the entire study period.
 
-- <u>uncertainty of defining the target area</u>: the indicators presented in this document have been compiled in accordance with different interpretations of the urban areas, see more in Section 1.1. The instructions outlined in @handbook2026 do not align well with SEEA EA principles. All the URAQ indicators present a different definition of the EEA, which greatly impact sthe results and is thus an important source of uncertainty.
+- <u>uncertainty of defining the target area</u>: the indicators presented in this document have been compiled in accordance with different interpretations of the urban areas, see more in Section 1.1. The instructions outlined in @handbook2026 do not align well with SEEA EA principles. All the URAQ indicators present a different definition of the EEA, which greatly impacts the results and is thus an important source of uncertainty.
 
+### 5.2 Reported uncertainties
+We could not quantify uncertainties linked to URAQ indicators.
 
 ## 6. References
 
@@ -359,26 +362,30 @@ There are several sources of uncertainties affecting the values of this indicato
 :::
 
 
-## 7. Datasets
-
+## 7. Import and prepare datasets
 All the datasets used to compile the different versions of the URAQ indicators have been thoroughly described in the previous sections, links to them are also provided for more information.
 
 We used the following six datasets: 
 
 * **D-1**: *PM2.5 data* (met.no): a series of raster datasets used to calculate mean PM2.5 concentration over different spatial scales. 
-* **D-2**: *Grunnkart* (NIBIO): a high-resolution vector dataset used to delineate urban areas (ET01: settlements and other artificial areas)
-* **D-3** *LAU data* (Local Administrative Units, Eurostat GISCO): a vector dataset was used as the primary data source to delineate the  municipalities 
-* **D-4** *DEGURBA*  (Degree of urbanisation) A tabular dataset assigning one of three DEGURBA classes (1: "cities"; 2: "towns and suburbs"; 3: "rural areas") to each municipality. These classes were used to breakdown the results for URAQ_001-003.
-* **D-5**: Norwegian *administrative boundaries for municipalities* (Kartverkert) were applied to update the *LAU data* to reflect recent boundary changes (Ålesund municipality divided into two smaller municipalities)
-* **D-6**: Norwegian *administrative identifiers for municipalities and fylke* was used to correct the municipalities' ID numbers and to add fylke (county) IDs too. 
 
+* **D-2**: *Grunnkart* (NIBIO): a high-resolution vector dataset used to delineate urban areas (ET01: settlements and other artificial areas).
 
-We decided to present the import, cleaning and pre-processing of the datasets in section 9. Analyses to present a continuous workflow from data import to data analyses.
+* **D-3** *LAU data* (Local Administrative Units, Eurostat GISCO): a vector dataset was used as the primary data source to delineate the  municipalities.
+
+* **D-4** *DEGURBA*  (Degree of urbanisation) A tabular dataset assigning one of three DEGURBA classes (1: "cities"; 2: "towns and suburbs"; 3: "rural areas") to each municipality. These classes were used to breakdown the results for URAQ_001-004.
+
+### 7.1 PM2.5 dataset (D-1)
+
+### 7.2 Grunnkart (D-2)
+
+### 7.3 LAU (D-3)
+
+### 7.4 DEGURBA (D-4)
+
 
 ## 8. Spatial units
-
-
-The indicator values of the PM2.5 variable can be interpreted at any spatial scale, including the original (100x100 m) raster maps (basic spatial unit, BSU). The smallest policy-relevant spatial units for all variables characterising ET01 are probably the contiguous settlement areas (bydeler: ecosystem assets, EA) and municipalities. Nevertheless, coarser ecosystem accounting areas (EAA), like the *fylke*s or the *entire country* can also be highly relevant as reporting areas.  
+The indicator values of the PM2.5 variable can be interpreted at any spatial scale, including the original (100m x 100m) raster maps (basic spatial unit, BSU). The smallest policy-relevant spatial units for all variables characterising ET01 are probably the contiguous settlement areas (bydeler: ecosystem assets, EA) and municipalities. Nevertheless, coarser ecosystem accounting areas (EAA), like the *fylke* (county) or the *entire country* can also be highly relevant as reporting areas.  
 
 
 ## 9. Analyses
