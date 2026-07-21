@@ -366,7 +366,7 @@ We could not quantify uncertainties linked to URAQ indicators.
 ## 7. Import and prepare datasets
 All the datasets used to compile the different versions of the URAQ indicators have been thoroughly described in the previous sections, links to them are also provided for more information.
 
-We used the following six datasets: 
+We used the following five datasets: 
 
 * **D-1**: *PM2.5 data* (met.no): a series of raster datasets used to calculate mean PM2.5 concentration over different spatial scales. 
 
