@@ -114,6 +114,7 @@ library(carrier)
 library(hdar)
 library(DT)
 library(numform)
+library(giscoR)
 
 # weird workarounds for cache issues
 conflicts_prefer(dplyr::filter)
@@ -245,46 +246,40 @@ meta |>
 <!--# Document you work below.  -->
 
 ## 1. Summary
-<!--# With a maximum of 300 words, describe the indicator in general terms as you would to a non-expert. Think of this as a kind of commmon language summary. It is a good idea to include a bullet point list of the spesific steps in the workflow. Include a mention of the following aspects:
-What does the metric represent?
-Why is this relevant for describing ecosystem condition in this ecosystem?
-What are the main anthropogenig impact factors?
-What kind of data is used? 
-Shortly, how is the data customized (modified, estimated, integarted) to fit its purpuse as an indicator?
-What is the current status of  the metric (can it be used or is it still in development)?
-How should the metric be used and interpretted, and how should it not be used/interpretted? -->
 
+1. **Background and rationale**:
 Tree canopy cover, or briefly *tree cover*, is the area of the earth that lies underneath the canopy/foliage of high (typically >5 m) woody vegetation when viewed vertically from above. This is typically expressed as the proportion/share of area of the land covered by tree crowns within a broader area of interest (**i.e.,** as the *density* of tree canopies/tree cover). Accordingly, *tree canopy cover density* (TCCD), or *tree cover density* in short, is typically measured from above by using some airborne or space-borne remote sensing technique. 
 
 In principle, TCCD can be quantified for all terrestrial ecosystem types (ETs). From an EU perspective there are, however, two major ETs for which TCCD is considered particularly relevant: 
 
-* The "*tree cover density*" of *forests* (ET04 in the EU ecosystem typology; @et-typo-eurostat) is one of the eight *mandatory* condition variables prescribed by the EU Regulation on Environmental Economic Accounting ([EU Reg. 2011/691](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:02011R0691-20250624)), 
+* The "*tree cover density*" of *forests* (ET04 in the EU ecosystem typology; @et-typo-eurostat) is one of the eight *mandatory* condition variables prescribed by the EU Regulation on Environmental Economic Accounting ([EU Reg. 2024/3024](https://eur-lex.europa.eu/eli/reg/2024/3024/oj/eng)), 
 
-* The average *tree canopy cover*	of *urban ecosystems* is listed as a voluntary condition variable in Eurostat's condition accounting guidelines (@cond-gn-eurostat) for the ecosystem type *settlements and other artificial areas* (ET01 in the EU ecosystem typology)
+* The average *tree canopy cover*	of *urban ecosystems* is listed as a voluntary condition variable in Eurostat's condition accounting guidelines (@handbook2026) for the ecosystem type *Settlements and Other Artificial Areas* (ET01 in the EU ecosystem typology) **#BALINT: THIS VOLUNTARY INDICATOR IS NOT IN THE OFFICIAL HANDBOOK**
 
-For both ecosystem types, the calculation of TCCD for a specific reference period and ecosystem accounting area (EAA) will consist of two 2 major steps :
+2. **Methods**:
+We used three main data sources: (i) High Resolution Layer Tree Cover and Forests produced by Copernicus; (ii) the official Norwegian ecosystem map (Grunnkart) produced by NIBIO; and (iii) Local Administrative Units produced by Eurostat (municipalities boundaries).
 
-1. Identify the '*target area*' for which the indicator should be calculated (cf. @Czucz2025a),
+For ET01 (Settlements and Other Artificial Areas) and ET04 (Forests and woodlands), the calculation of TCCD for a specific reference period and ecosystem accounting area (EAA) consists of two two main steps :
+
+1. Identify the '*target area*' for which the indicator should be calculated (cf. @Czucz2025a);
 
 2. Calculate the mean TCCD within this area (for the selected accounting period).
 
-Nevertheless, there are often several ways of defining the *target area*, and this is particularly true for urban ecosystems. Accordingly, in this document, we will present four different variants of the urban indicator, based on different definitions of the *target area* (see section 1.2). Besides offering a flexible approach for performing the "right" calculation for every reporting context, these variants are also aligned across other *urban* ecosystem condition variables (URGR, URAQ), thus making it easier to establish consistency across the different variables and their policy use. 
+There are often several ways of defining the *target area* at Step 1, especially when it comes to urban ecosystems. Accordingly, in this document, we will present four different variants of the urban indicator, based on different definitions of the *target area* (see point 4 below). Besides offering a flexible approach for performing the "right" calculation for various reporting context, these variants are also aligned across other *urban* ecosystem condition variables (URGR, URAQ), thus making it easier to establish consistency across the different variables and their policy use. 
 
-### 1.1 Interpretation
+
+3. **Interpretation**:
 A value of 1 signifies that the ecosystem type is fully covered by tree canopies. For some forests this might be the ideal condition, for other forests and urban ecosystems lower tree covers can still indicate very good conditions. Low values (TCCD close to zero) reflect a bad condition in both forest and urban ecosystems. 
 
 
-### 1.2 Overview of the different indicator versions
-
+4. **Results and development needs**:
 For forests we only calculate one version of this indicator: 
 
-* **TCCD_001**:  Average Tree Cover Density in the forest areas of Norway. Here the *target area* is defined as the total area of ET04 (*Forest and woodlands*) in the Norwegian national ecosystem type map (Grunnkart), which complies with both Eurostat's guidance (@cond-gn-eurostat2025) and the SEEA EA principles. 
+* **TCCD_001**:  Average Tree Cover Density in the forest areas of Norway. Here the *target area* is defined as the total area of ET04 (*Forest and woodlands*) in the Norwegian national ecosystem type map (Grunnkart), which complies with both Eurostat's guidance (@handbook2026) and the SEEA EA principles. 
 
-An alternative version could potentially also be calculated directly from NIBIO's National Forest Inventory data, but unfortunately *tree cover* as a variable was not assessed consistently in all forest inventory sites: some forest types were left out, which can lead to a biased estimator (see @Czucz2025a).   
+For urban ecosystems we present five variants:
 
-For urban ecosystems we present four variants:
-
-* **TCCD_104**: The *target area* is the total area of the ecosystem type ET01 (*Settlements and other artificial areas*) in Norway. This is the option which is most aligned with the principles of SEEA EA (UN et al. 2024), where an ecosystem's condition indicators are expected to be representative of their "parent" ecosystem type (see also @Czucz2025a). 
+* **TCCD_100**: The *target area* is the *entire area* of the municipalities considered as "cities" according to Eurostat DEGURBA classification (`DEGURBA = 1`). As the total area of Norwegian municipalities is typically dominated by natural ecosystems (forests, wetlands, mountains, etc.), this version of the indicator will overestimate TCCD in urban ecosystems within municipalities.
 
 * **TCCD_101**: The *target area* is the area of the ecosystem type ET01 (*Settlements and other artificial areas*) within the municipalities considered as *"cities"* according to Eurostat's degree of urbanisation (DEGURBA) classification (`DEGURBA = 1`). 
 
@@ -292,82 +287,61 @@ For urban ecosystems we present four variants:
 
 * **TCCD_103**: The *target area* is the area of the ecosystem type ET01 (*Settlements and other artificial areas*) within the municipalities considered as "rural areas" according to Eurostat DEGURBA classification (`DEGURBA = 3`). TCCD_101-TCCD_103 are complementary to each other, they present an overview of the tree cover across all three main types of municipalities in Norway. As the three DEGURBA categories comprise all Norwegian municipalities, the area-weighted mean (for ET01) of these three indicators will be equal to TCCD_104 for any reporting period.  
 
-* **TCCD_100**: The *target area* is the *entire area* of the municipalities considered as "cities" according to Eurostat DEGURBA classification (`DEGURBA = 1`). As the total area of Norwegian municipalities is typically dominated by natural ecosystems (forests, wetlands, mountains, etc.), this version of the indicator will overestimate TCCD in urban ecosystems within municipalities.
+* **TCCD_104**: The *target area* is the total area of the ecosystem type ET01 (*Settlements and other artificial areas*) in Norway. This is the option which is most aligned with the principles of SEEA EA (@seea-ea), where an ecosystem's condition indicators are expected to be representative of their "parent" ecosystem type (see also @Czucz2025a). 
 
-This last option (TCCD_100) obviously contradicts key principles of ecosystem accounting (the target area covers vast areas of forests, wetlands, grasslands, heathlands, lakes, etc. in addition to a typically small settlement area), so this option should probably not be used for reporting, we just present to maintain consistency with the other urban ecosystem condition indicators (URGR, URAQ) presented in this study. The most SEEA-EA-consistent variant is TCCD_104, which also seems to be aligned with the relatively brief description available for the voluntary variable ("average across all Settlements and other artificial areas"). The calculation of TCCD_101 to TCCD_103 for diverse ecosystem accounting areas (EAAs) might also be useful for the additional analytical insight offered by distinguishing the different types of settlements according to their degree of urbanisation.   
 
+**TCCD_100** contradicts key principles of ecosystem accounting (*i.e.,* the target area covers vast areas of forests, wetlands, grasslands, heathlands, lakes, etc. in addition to a typically small settlement area), so this option should probably not be used for reporting, we just present to maintain consistency with the other urban ecosystem condition indicators (URGR, URAQ) presented in ecRxiv. The most SEEA-EA-consistent variant is TCCD_104, which also seems to be aligned with the relatively brief description available for the voluntary variable ("average across all Settlements and other artificial areas"). The calculation of TCCD_101 to TCCD_103 for diverse ecosystem accounting areas (EAAs) might also be useful for the additional analytical insight offered by distinguishing the different types of settlements according to their degree of urbanisation.   
 
 
 ## 2. About the underlying data
-<!--# Describe the data you have used in more detail, it's origin, biases, availabilit ect.-->
-
 We use the following two main datasets for our calculations: 
 
-* **Copernicus HRL TCD**: We used the *Tree Cover Density* product of the Copernicus Land Monitoring Service to calculate mean tree canopy cover density over different ecosystem types. 
+* **Copernicus High Resilution Layer Tree Cover Density (HRL TCD)**: We used the *Tree Cover Density* product of the Copernicus Land Monitoring Service to calculate mean tree canopy cover density over different ecosystem types. 
 
 * **Grunnkart**: Norway's official *ecosystem type map* designed to support ecosystem accounting (@strand2024; @gk2). This map aims at implementing Eurostat's EU ecosystem typology (@et-typo-eurostat) for Norway. Here we use this map for delineating the area of ecosystem type ET01 (*Settlements and other artificial areas*) and ET04 (*Forest and woodlands*).
 
-In addition we use several further administrative datasets to delineate the individual municipalities (i.e., Local Administrative Units, LAU), as well as to determine their "degree of urbanisation" (DEGURBA), and to assign them to regions (counties and "fylke").
+In addition we used administrative datasets to delineate the individual municipalities (i.e., Local Administrative Units, LAU), and to determine their "degree of urbanisation" (DEGURBA).
 
 
 ### 2.1 Spatial and temporal resolution and extent
-<!--# Describe the temporal and spatial resolution and extent of the data used -->
-
-*Copernicus HRL TCD* is available for the whole Europe, including mainland Norway (excluding Svalbard) as a raster file with a high (10 m) resolution. 
+*Copernicus HRL TCD* is available for the whole Europe, including mainland Norway (excluding Svalbard) as a raster file with a high resolution (10m x 10m). 
 
 All other spatial data files, including the *Grunnkart* and the *Local Administrative Units* (LAU) are vector data (polygons). Unlike traditional land cover maps (e.g., Corine Land Cover), the Grunnkart does not have a single, universal Minimum Mapping Unit (MMU). Instead, the spatial resolution of the Grunnkart is directly inherited from the underlying source datasets used in its creation. This is because the new map is a synthesis and reclassification of existing data rather than a new, independent mapping effort. As the majority of spatial information available in public datasets focusses on human settlements and infrastructure, urban ecosystems are relatively finely represented in the Grunnkart, compared to other, less anthropologically modified ecosystem types. This makes the contours of ET01 overly-detailed, often delineating individual buildings or roads passing through a forest as "urban ecosystems". This also makes the dataset somewhat unfit for its purpose (@Rendon2025) and cumbersome to process. The delineation of ET04 is of comparable detail and quality as forests is the main ecosystem type in Norway.
 
 
 ### 2.2 Original units
-<!--# What are the original units for the most relevant  variables in the data-->
-
-The pixel values of Copernicus HRL TCD express the estimated share of tree cover in percentages (i.e., the % of the pixel covered by tree canopies). As each pixel covers ~100 m^2^, this actually corresponds to the estimated tree cover in m^2^. 
+The pixel values of Copernicus HRL TCD express the estimated share of tree cover in percentages (*i.e.*, the % of the pixel covered by tree canopies). As each pixel covers ~100 m^2^, this actually corresponds to the estimated tree cover in 1m^2^. 
 
 
 ### 2.3 Additional comments about the dataset
-
-The actual boundaries of the municipalities were patched together from two sources: Eurostat Local Administrative Units (2023) and Kartverkert national municipality boundaries (2024) (see more details in Section 9). The DEGURBA dataset were only used to classify the Norwegian municipalities into three categories (1: "cities", 2: "towns and suburbs", 3: "rural areas") based on their degree of urbanisation. 
+The DEGURBA dataset was used to classify the Norwegian municipalities into three categories (1: "cities", 2: "towns and suburbs", 3: "rural areas") based on their degree of urbanisation. This data are produced by Eurostat.
 
 
 #### 2.3.1 Instructions for citing, using and accessing data
-<!--# Is the data openly available? If not, how can one access it? What are the key references to the datasets? -->
-
 ||Publicly accessible to download| Data and metadata available Available at|
 |----|--|--------|
 | **Copernicus Tree Cover Density**  | Yes | Data and description downloadable from the Copernicus [website](^https://land.copernicus.eu/en/products/high-resolution-layer-forests-and-tree-cover?tab=overview$) and through the Copernicus [WEkEO API](^https://wekeo.copernicus.eu/$) | 
 **Grunnkart**  | No, only upon request to [NIBIO](^https://kartkatalog.geonorge.no/metadata/nasjonalt-grunnkart-for-arealanalyse-testversjon-2/28c28e3a-d88f-4a34-8c60-5efe6d56a44d$) | We used test version 0.2, description available in @gk2 and @strand2024 |
 | **EU data about the municipalities**  | Yes | Data and description available from Eurostat: [LAU](^https://ec.europa.eu/eurostat/web/gisco/geodata/statistical-units/local-administrative-units$) and [DEGURBA](^https://ec.europa.eu/eurostat/web/nuts/local-administrative-units$) |
-| **Norwegian data about the municipalities**  | Yes | Data available from Kartverkert: [boundaries](^https://kartkatalog.geonorge.no/metadata/administrative-enheter-kommuner/041f1e6e-bdbc-4091-b48f-8a5990f3cc5b$) and [identifiers](^https://www.kartverket.no/til-lands/fakta-om-norge/norske-fylke-og-kommunar$) |
 
-Detailed codes and instructions to download the data are described in Section 9.
 
 ## 3. Indicator properties
 
 ### 3.1 Ecosystem Condition Typology Class (ECT)
-<!--# Describe the rationale for assigning the indicator to the ECT class. See https://oneecosystem.pensoft.net/article/58218/
-This doesnt need to be very long. Maybe just a single sentence. -->
-
 Tree Canopy Cover Density can be considered under ECT class B2 (structural state characteristics) as it describes the physical structure of the parent ecosystem (ET04 forests and ET01 urban ecosystems, respectively).
 
 
 ### 3.2 Ecosystem condition characteristic
-<!--# Describe the ecosystem condition characteristic represented in the indicator. See 10.3897/oneeco.6.e58218 for information on what these characteristics might be.
-For example, and indicator called 'Trenching in mires' could be made to represent an ecosystem characteristic 'Intact hydrology'. The term 'characteristic' is used similar to the term 'criteria' in Multiple Criteria Decition Making. -->
-
 Trees are key structural components of almost all terrestrial ETs. The variable Tree Canopy Cover Density is a simple yet powerful metric describing the abundance of trees, thus structurally characterising the ETs. 
 
 In principle, as trees can act as microhabitats and they also moderate microclimate, an increased TCCD should indicate an increased support for species and genetic diversity (a positive directionality, sensu @Czucz2021). Depending on the type and subtype of the parent ecosystem this relationship is, however, not always true. Some forest subtypes have a naturally open structure, in such forest types an additional increase in TCCD cannot be seen as an improvement of condition. Similarly, in clear-cut areas sapling stands emerge as the forest regenerates. These stands can be quite dense and offer a high Tree Canopy Cover Density even though the overall condition of the forest is poor as still regenerating from human intervention.
 
 
 ### 3.3 Other standards
-<!--# Optional: Add text about other spesific standards, e.g. national standards, and how the indicator relates to these -->
-
 In this documentation, we present different variations of the Tree Canopy Cover Density indicator. For forest ecosystems TCCD_001 aligns well both with SEEA EA principles and the requirements for national reporting under EU Regulation 2024/3024 (@eu-2024-3024). For urban ecosystems we recommend the use of TCCD_104 for all reporting purposes, while TCCD_101--103 can provide additional insights by distinguishing the TCCD of rural regions, urbanised regions, and major cities from each other.
 
 
 ### 3.4 Collinearities with other indicators
-<!--# Describe known collinearities with other metrices (indicators or variables) that could become problematic if they were also included in the same Ecosystem Condition Assessment as the indicator described here. -->
-
 The TCCD of urban ecosystems will definitely be highly correlated with the abundance of *urban green areas* (URGR), which is one of the mandatory EU condition variables for ET01. As trees provide the air filtration service, which allows to decrease the concentration of pollutants in that air (e.g., particulate matter 2.5) there might also be a correlation with the other mandatory urban indicator, the concentration of *PM25* in urban ecosystems (URAQ).
 
 In more general, the abundance of trees in terrestrial ecosystems is connected to (and possibly more or less correlated with) several further characteristics of these ETs, e.g.:
@@ -383,8 +357,6 @@ In more general, the abundance of trees in terrestrial ecosystems is connected t
 * the successional age of communities, the frequency of major disturbance events
 
 ### 3.5 Impact factors
-<!--# Describe the main natural and anthropogenic factors that affects the metric -->
-
 There are a number of natural and anthropogenic processes that affect the number and size of trees in terrestrial ecosystems. In forests the most important such process is probably human management (forestry activities), the type and intensity of which is decisive for the closedness of tree canopies. Other relevant factors include a number of environmental variables (which often also determine the (sub)type of the forest) as well as disturbance regimes (e.g. fires). 
 
 TCCD in urban ecosystems is also overwhelmingly determined by anthropogenic processes, including conscious urban planning.
@@ -393,21 +365,15 @@ TCCD in urban ecosystems is also overwhelmingly determined by anthropogenic proc
 ## 4. Reference condition and levels
 
 ### 4.1 Reference condition
-<!--# Define the reference condition (or refer to where it is defined). Note the destinction between reference condition and reference levels 10.3897/oneeco.5.e58216 --> 
-
 Following SEEA EA (@seea-ea), the most suitable *reference condition* for forests is their natural condition, where the structure and composition of the forest is dominated by natural processes, including dynamic equilibria with natural disturbance regimes (SEEA EA 5.70-71). This actually implies slightly different reference conditions for the different forest types. 
 
 For urban ecosystems SEEA EA suggests the identification of an "anthropogenically derived" reference condition (SEEA EA 5.72, a.k.a. "best attainable condition, Vallecillo et al. 2022), which is also an option for highly modified forest types, without any natural counterparts. As this type of reference condition cannot be "sampled" (there is no clear reference set of "cities" in an "optimal/ideal/natural condition"), the best way to operationalise this type of reference condition is to determine optimal reference levels (X~100~) for each variable independently (@Czucz2025b), which is also discussed below. 
 
 
 ### 4.2 Reference levels
-<!--# If relevant (i.e. if you have normalised a variable), describe the reference levels used to normalise the variable. 
-Use the terminology where X~0~ referes to the referece level (the variable value) denoting the worst possible condition; X~100~denotes the optimum or best possible condition; and X~*n*~, where in is between 0 and 100, denotes any other anchoring points linking the variable scale to the indicator scale (e.g. the threshold value between good and bad condition X~60^). 
-Why was the current option chosen and how were the reference levels quantified? If the reference values are calculated as part of the analyses further down, please repeat the main information here -->
-
 In this exercise we have not determined *reference levels* and have not applied a proper rescaling for any of the TCCD variables. Nevertheless, we have identified several considerations related to the future selection of these reference levels. 
 
-* **X~100~**: For forests the optimal reference level (X~100~) probably needs to be different for each relevant forest subtype, reflecting the canopy structure of the natural state of the given forest type (e.g. boreal rainforest vs a steep ravine forest). For forest types with a naturally closed canopy $X~100~ = 1$ (100% tree cover) can probably also be a suitable reference level. For urban ecosystems and highly anthropogenic forest types the X~100~ can probably be anchored best using linear extrapolation after the good/bad threshold (X~60~) and the pessimal scale endpoint have already been set (cf. @Czucz2025b; Paracchini et al. in prep).
+* **X~100~**: For forests the optimal reference level (X~100~) probably needs to be different for each relevant forest subtype, reflecting the canopy structure of the natural state of the given forest type (*e.g.,* boreal rainforest *vs* a steep ravine forest). For forest types with a naturally closed canopy $X~100~ = 1$ (100% tree cover) can probably also be a suitable reference level. For urban ecosystems and highly anthropogenic forest types the X~100~ can probably be anchored best using linear extrapolation after the good/bad threshold (X~60~) and the pessimal scale endpoint have already been set (cf. @Czucz2025b; Paracchini et al. in prep).
 
 * **X~0~**: The natural zero (0% tree cover) is probably a suitable pessimal reference level (null value) for all TCCD variables, both in forests and in urban ecosystems.
 
@@ -416,48 +382,28 @@ In this exercise we have not determined *reference levels* and have not applied 
 
 
 #### 4.2.1 Spatial resolution and validity
-<!--# Describe the spatial resolution of the reference levels. E.g. is it defined as a fixed value for all areas, or does it vary. Also, at what spatial scale are the reference levels valid? For example, if the reference levels have a regional resolution (varies between regions), it might mean that it is only valid and correct to use for normalising local variable values that are first aggregated to regional scale. However, sometimes the reference levels are insensitive to this and can be used to scale variables at the local (e.g. plot) scale. -->
-
-X~0~ (the null value of TCCD) can be seen as a universal reference level, which is valid for any ET, including any forest subtype. For all other RLs (X~60~, X~100~) the value of the RL will probably need to depend on the ecosystem subtype, and/or possibly also on bioclimatic zone (i.e. "homogeneous ecosystem areas" sensu Vallecillo et al. 2022). 
+X~0~ (the null value of TCCD) can be seen as a universal reference level (RL), which is valid for any ET, including any forest subtype. For all other RLs (X~60~, X~100~) the value of the RL will probably need to depend on the ecosystem subtype, and/or possibly also on bioclimatic zone (i.e. "homogeneous ecosystem areas" sensu Vallecillo et al. 2022). 
 
 As in the case of forests each pixel of the map can belong to a different forest type, TCCD should ideally be rescaled at the local scale (ecosystem asset by ecosystem asset), before any aggregation would happen. Accordingly, a proper rescaling of TCCD into proper "condition indicators" (sensu SEEA EA) will ideally demand a detailed map of the spatial distribution of the different forest subtypes in Norway. The identification of the relevant spatial datasets, ecosystem subtypes, and reference levels needs to be aligned with each other, and this will be a key task for making this ecosystem condition variable really meaningful for policy. In the case of this variable, where the same coverage value may mean a good condition in one forest type, while a very bad condition in another one, aggregating unscaled pixel values across broader areas may lead to confusing and contradictory results.
 
 
 ## 5. Uncertainties
-<!--# Describe the main uncertainties or sources of error in the indicator or the underlying data. -->
-
+### 5.1 General uncertainties
 There are several sources of uncertainties affecting the values of this indicator and its subsequent use:
 
 - <u>data uncertainties in Copernicus TCD</u>: The main input data source is itself the output of a complicated machine learning algorithm. While on a pan-European scale the accuracy (including both producer and user accuracy) of the HRL TCD product exceeds 90%, in Norway this accuracy seems to be significantly lower (@Dostalova2021). This can largely be attributed to the complex and uneven topography of the country, which is known to create challenges for satellite-based classification algorithms, leading to lower performance.  
 
-- <u>spatial, temporal and semantic uncertainties of the Grunnkart</u>: the current Grunnkart combines many different static data sources with various temporal reference dates, which does not seem to present an easily reproducible and updatable data source. This possibly introduces some "noise" into the delineation of both forests and, in particular, urban ecosystems. As Grunnkart is currently a static dataset, we used for the entire study period the only available timeline (which itself relies on temporally heterogeneous sources in an undocumented way). 
+- <u>spatial, temporal and semantic uncertainties of the Grunnkart</u>: the current Grunnkart combines many different static data sources with various temporal reference dates, which does not seem to present an easily reproducible and updatable data source. This means that the outlines of the urban ecosystems (ET01) contain an unknown amount of uncertainty ("ad-hoc-ness"). The Grunnkart is currently a static dataset whose timeline has not been clearly documented as relying on temporally heterogeneous sources. Neverthless, we used it for the entire study period.
+
+- <u>uncertainty of defining the target area</u>: the indicators TCCD_100 to TCCD_104 have been compiled in accordance with different interpretations of the urban areas, see more in Section 1.1. The instructions outlined in @handbook2026 do not align well with SEEA EA principles. All these indicators present a different definition of the EEA, which greatly impacts the results and is thus an important source of uncertainty.
+
+### 5.2 Reported uncertainties
+We do not quantify uncertainties around our indicators in this document due to lack of resources.
 
 
 ## 6. References
-<!--# You can add references manually or use a citation manager and add intext citations as with crossreferencing and hyperlinks. See https://quarto.org/docs/authoring/footnotes-and-citations.html -->
-
 ::: {#refs}
 :::
-
-<!-- Aune-Lundberg, L., Steinnes, M., Lund, M.O., Arneberg, E. & Munsterhjelm, N. 2025. Testversjon 2 – Nasjonalt grunnkart for bruk i arealregnskap. NIBIO Rapport 11/50/2025. (in Norwegian) -->
-
-<!-- Czúcz, B., Keith, H., Maes, J., Driver, A., Jackson, B., Nicholson, E., Kiss, M., & Obst, C. (2021). Selection criteria for ecosystem condition indicators. Ecological Indicators, 133, 108376. https://doi.org/10.1016/j.ecolind.2021.108376 -->
-
-<!-- Czúcz, B., Framstad, E., Clappe, S. & Nowell, M. 2025a. Exploring the use of Eurostat’s mandatory and voluntary indicators in Norway. NINA Report 2604. Norwegian Institute for Nature Research. -->
-
-<!-- Czúcz, B., Lappalainen, M., Jernberg, S., Korpinen, S. 2025b. Report on definition of reference conditions that describe good ecosystem condition. SELINA Deliverable 3.3. https://project-selina.eu/  -->
-
-<!-- Dostálová, A., Lang, M., Ivanovs, J., Waser, L. T., & Wagner, W. (2021). European Wide Forest Classification Based on Sentinel-1 Data. Remote Sensing, 13(3), 337. https://doi.org/10.3390/rs13030337 -->
-
-<!-- Eurostat 2023. Ecosystem condition accounts – Guidance Note, Fourth Draft. Eurostat Unit E2, Task Force on Ecosystem Accounting, 05 October 2023. Doc. ENV/EA/TF/2023_3/4v2. -->
-
-<!-- Eurostat 2024. EU Ecosystem typology. Technical Note. Version: September 2024. Eurostat. Supplementary document to Doc. ENV/EA/TF/2024_3/2a. -->
-
-<!-- Eurostat 2025. Ecosystem Condition Accounts – Guidance Note, Sixth Draft. Eurostat Unit E2, Task Force on Ecosystem Accounting, 26-27 February 2025. Doc. ENV/EA/TF/2025_1/2. -->
-
-<!-- Strand, G.-H., Steinnes, M., Arneberg, E., Lund, M.O., Munsterhjelm, N., Aune-Lundberg, L. & Rørholt, A. 2024. Grunnkart for bruk i arealregnskap. NIBIO Rapport 10/28/2024. (in Norwegian) -->
-
-<!-- UN et al. 2024. System of Environmental Economic Accounting – Ecosystem Accounting. United Nations, Department of Economic and Social Affairs, Statistics Division. Statistical Papers, Series F No. 124. -->
 
 
 ## 7. Datasets
