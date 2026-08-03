@@ -420,19 +420,14 @@ D-2 is stored in the temporary duckdb database.
 #| code-summary: "Load Grunnkart"
 
 # Path to GK
-gk_path <- "/data/P-Prosjekter2/412413_2023_no_egd/git_data/GK_processed/GK_final.gpkg"
+gk_path <- "/data/P-Prosjekter2/412413_2023_no_egd/git_data/GK_processed/GK_final_UTM33.gpkg"
 
 # Store in duckdb database
 ddbs_write_table(conn = conn_pm,
            data = gk_path,
-           name = "grunnkart_32") 
+           name = "grunnkart_33",
+           overwrite = TRUE) 
 
-## Re-project GK in the CRS of PM2.5 data: EPSG:25833
-ddbs_transform(x = "grunnkart_32",
-               y = st_crs(pm25_data[[1]]),
-               conn = conn_pm,
-               name = "grunnkart_33",
-               overwrite = TRUE)
 
 # Verify table is in my duckdb conn_pm database
 ddbs_list_tables(conn_pm)
@@ -493,15 +488,31 @@ lau_dgurb <- inner_join(lau_no,
               select(Fylke_nummer, Fylke_navn, GISCO_ID, LAU_NAME, DEGURBA, geometry) %>%
               st_as_sf()
 
-# Re-project in the CRS of pm2.5 data
-lau_dgurb <- st_transform(lau_dgurb, crs = crs(pm25_data[[1]]))
+# Re-project in the CRS of pm2.5 data and store in duckdb database
+st_transform(lau_dgurb, crs = crs(pm25_data[[1]])) %>%
+      ddbs_make_valid(conn = conn_pm,
+                      "lau_33",
+                      overwrite = TRUE)
+ 
+# Check validity
+valid_check <- ddbs_is_valid("lau_33",
+                              conn = conn_pm) %>%
+                 filter(!is_valid) %>%
+                 ddbs_collect() %>%
+                 dim()
 
+empty_check <- ddbs_is_empty("lau_33",
+                             conn = conn_pm) %>%
+                  filter(is_empty == TRUE) %>%
+                  ddbs_collect() %>%
+                  dim()
 
-# Store in duckdb database
-ddbs_write_table(conn = conn_pm,
-                 data = lau_dgurb,
-                 name = "lau_33",
-                 overwrite = TRUE)
+simple_check <- ddbs_is_simple("lau_33",
+                               conn = conn_pm) %>%
+                  filter(!is_simple) %>% 
+                  ddbs_collect() %>%
+                  dim()
+
 
 # Verify table is in my duckdb conn_pm database
 ddbs_list_tables(conn_pm)
@@ -644,14 +655,15 @@ rm(list = setdiff(ls(),
 #| code-summary: "Compile URAQ_002-3-4"
 
 ## Interspet ET01 with LAUs
-lau_et01 <- ddbs_intersection("grunnkart",
-                              "lau",
+lau_et01 <- ddbs_intersection("grunnkart_33",
+                              "lau_33",
                               conn = conn_pm,
                               conn_x = conn_pm,
                               conn_y = conn_pm,
                               "lau_et01") %>% 
                 ddbs_area(new_column = "area_m2", overwrite = TRUE) %>%
                 ddbs_collect()
+
 
 ## Wrap pm25 data for parallelisation
 pm25_data_w <- map(pm25_data,
@@ -660,7 +672,7 @@ pm25_data_w <- map(pm25_data,
 ## Extract the values of PM2.5 data per LAU
 daemons(8)
 
-lau1_pm25 <- map(seq_along(pm25_data_w), in_parallel(function(x){
+lauet01_pm25 <- map(seq_along(pm25_data_w), in_parallel(function(x){
    
    # Libraries  
    library(exactextractr)
@@ -672,20 +684,20 @@ lau1_pm25 <- map(seq_along(pm25_data_w), in_parallel(function(x){
   
    # Run exact_extract
    exact_extract(pm25_rast,
-                 lau_1,
+                 lau_et01,
                  fun = c("mean"),
                  append_cols = TRUE) %>%
     mutate(., "Accounting period" = names(pm25_data_w)[x])
   
   }, 
-   lau_1 = lau_1,
+   lau_et01 = lau_et01,
    pm25_data_w = pm25_data_w))
 
 daemons(0)
 
 
 ## URAQ national level - area-weighted mean
-uraq_001_nat <- map(seq_along(lau1_pm25), 
+uraq_002_nat <- map(seq_along(lau1_pm25), 
                 ~ weighted.mean(lau1_pm25[[.x]]$mean, lau1_pm25[[.x]]$area_m2)) 
 
 names(uraq_001_nat) <- names(pm25_data)
