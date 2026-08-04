@@ -659,14 +659,22 @@ rm(list = setdiff(ls(),
 
 ## Intersect ET01 with LAUs - block processing to avoid memory issues
 # Block intersections
-fylke_nb <- dbGetQuery(con, "SELECT DISTINCT Fylke_nummer FROM lau_33") %>%
-              unmane() %>%
+fylke_nb <- dbGetQuery(conn_pm, "SELECT DISTINCT Fylke_nummer FROM lau_33") %>%
+              unname() %>%
               unlist()
 
 walk(seq_along(fylke_nb), function(i){
+
+  # Input data  
+  et <- as_duckspatial_df("gk_et01_33", conn = conn_pm) %>%
+          filter(fylke_nr == !!fylke_nb[i])
   
-  ddbs_intersection(et01_vec[i],
-                    lau_vec[i],
+  lau <- as_duckspatial_df("lau_33", conn = conn_pm) %>%
+          filter(fylke_nr == !!fylke_nb[i])
+  
+  # Intersection
+  ddbs_intersection(et,
+                    lau,
                     conn = conn_pm,
                     conn_x = conn_pm,
                     conn_y = conn_pm) %>% 
