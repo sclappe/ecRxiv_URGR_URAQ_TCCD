@@ -651,25 +651,19 @@ rm(list = setdiff(ls(),
 
 # URAQ_002-3-4
 **Target area** = the area of ET01 in the LAU whose `DEGURBA` is `1` (URAQ_002), `2` (URAQ_003), `3` (URAQ_003).
-**Compilation process** = spatial intersection between LAUs data and ET01. Then spatial intersection with PM2.5 data, for all years. Area-weigthed average of PM2.5 values across the  LAUs for national value. These three indicators rely on the same compilation process, hence we do them all at once.
+**Compilation process** = spatial intersection between LAUs data and ET01. Then spatial intersection with PM2.5 data, for all years. Area-weighted average of PM2.5 values across the LAUs for national value. These three indicators rely on the same compilation process, hence we do them all at once.
 
 ```{r}
 #| eval: false
 #| code-summary: "Spatial intersection ET01 and LAU"
 
-## Intersect ET01 with LAUs - block processing to avoid memor issues
+## Intersect ET01 with LAUs - block processing to avoid memory issues
 # Block intersections
-fylke_nb <- as_duckspatial_df("lau_33", conn = conn_pm) %>% 
-              select(Fylke_nummer) %>%
-              ddbs_collect() %>%
-              st_drop_geometry() %>%
-              unique() %>%
-              as.vector()
+fylke_nb <- dbGetQuery(con, "SELECT DISTINCT Fylke_nummer FROM lau_33") %>%
+              unmane() %>%
+              unlist()
 
-walk(seq_along(fylke_nb$Fylke_nummer), function(i){
-  
-  
-
+walk(seq_along(fylke_nb), function(i){
   
   ddbs_intersection(et01_vec[i],
                     lau_vec[i],
@@ -677,20 +671,11 @@ walk(seq_along(fylke_nb$Fylke_nummer), function(i){
                     conn_x = conn_pm,
                     conn_y = conn_pm) %>% 
     
-    ddbs_area(new_column = "area_m2", name = paste0("lau_et01_", i), conn = conn_pm, overwrite = TRUE)
+    ddbs_area(new_column = "area_m2", name = paste0("lau_et01_", fylke_nb[i]), conn = conn_pm, overwrite = TRUE)
   
 })
 
 
-  dbExecute(conn_pm, 
-sprintf("
-  CREATE TABLE grunnkart_intersection AS
-SELECT g.*, l.*
-FROM grunnkart_valid g
-JOIN lau_fylke l
-ON ST_Intersects(g.geom, l.geom)", 
-
-gk_path, "Settlements and other artificial areas"))
 
 ```
 
@@ -703,64 +688,50 @@ gk_path, "Settlements and other artificial areas"))
 pm25_data_w <- map(pm25_data,
                    wrap)
 
-## Write the three sub-datasets in the R environment
-lau_et01_list <- map(1:3 , function(x){
-  ddbs_collect(as_duckspatial_df(paste0("lau_et01_", x), conn = conn_pm))
+## Retrieve pm25 per pyear and fylke
+lau_et01_pm25 <- map(seq_along(pm25_data_w)[1:2], function(yr){
+  
+  # Input data
+  pm25_w <- pm25_data_w[[yr]]
+  year <- names(pm25_data_w)[yr]
+  
+  # Retrieve the (temporary) file path to conn_pm BEFORE going parallel
+  db_path <- dbGetQuery(conn_pm, "PRAGMA database_list;") %>%
+    filter(name == "main") %>%
+    pull(file)
+  
+  # Parallelise
+  pm25_yr <- map(seq_along(fylke_nb)[1:2], in_parallel(function(fyk){
+    
+    # Libraries needed
+    library(duckspatial)
+    library(exactextractr)
+    library(dplyr)
+    library(terra)
+    library(duckdb)
+    library(DBI)
+    
+    # Connection to duckdb database
+    conn_pm <- dbConnect(duckdb(), dbdir = db_path, read_only = TRUE)
+    on.exit(dbDisconnect(conn_pm, shutdown = TRUE), add = TRUE)
+    
+    # Retrieve et01 for filke fyk
+    lau_et01 <- ddbs_collect(as_duckspatial_df(paste0("lau_et01_", fylke_nb[fyk]), conn = conn_pm))
+    
+    # Unwrap raster
+    pm25_rast <- unwrap(pm25_w)
+    
+    # Run exact_extract
+    exact_extract(pm25_rast, lau_et01, fun = c("mean"), append_cols = TRUE) %>%
+      mutate(`Accounting period` = year)
+    
+  },
+  pm25_w = pm25_w,
+  year = year,
+  fylke_nb = fylke_nb,
+  db_path = db_path))
+  
 })
-
-
-## Extract the values of PM2.5 data per LAU - Block processing
-daemons(8)
-
-lauet01_pm25 <- map(seq_along(pm25_data_w), in_parallel(function(x){
-   
-   # Libraries  
-   library(exactextractr)
-   library(dplyr)
-   library(terra)
-  
-   # Unwrap raster
-   pm25_rast <- unwrap(pm25_data_w[[x]])
-  
-   # Run exact_extract
-   exact_extract(pm25_rast,
-                 lau_et01,
-                 fun = c("mean"),
-                 append_cols = TRUE) %>%
-    mutate(., "Accounting period" = names(pm25_data_w)[x])
-  
-  }, 
-   lau_et01 = lau_et01,
-   pm25_data_w = pm25_data_w))
-
-daemons(0)
-
-
-
-
-daemons(8)
-
-lau_et01_pm25 <- map(seq_along(pm25_data_w), function(table_idx){
-  
-  # Parallelise the extraction of PM2.5 cells for each year
-  
-  pm25_cells <- map(seq_along(yrs), in_parallel(function(j){
-      extract_rast(
-      path_rast_folder = "/data/P-Prosjekter2/412413_2023_no_egd/git_data/PM2.5/",
-      soaa_shp = soaa_filtered,
-      municipality = municipality_code,
-      year = yrs[j]
-    )
-    }, extract_rast = extract_rast,
-    soaa_filtered = soaa_filtered,
-    municipality_code = municipality_code,
-    yrs = yrs))
-  
-  return(pm25_cells)
-  
-  })
-
-daemons(0)
 ```
 
 ```{r}
