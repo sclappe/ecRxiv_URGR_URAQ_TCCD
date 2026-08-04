@@ -649,9 +649,9 @@ rm(list = setdiff(ls(),
 ```
 
 
-# URAQ_002-3-4
-**Target area** = the area of ET01 in the LAU whose `DEGURBA` is `1` (URAQ_002), `2` (URAQ_003), `3` (URAQ_003).
-**Compilation process** = spatial intersection between LAUs data and ET01. Then spatial intersection with PM2.5 data, for all years. Area-weighted average of PM2.5 values across the LAUs for national value. These three indicators rely on the same compilation process, hence we do them all at once.
+# URAQ_002-3-4-5
+**Target area** = the area of ET01 in the LAU whose `DEGURBA` is `1` (URAQ_002), `2` (URAQ_003), `3` (URAQ_003). The sum of all gives ET01 in all LAUs (URAQ_005)
+**Compilation process** = spatial intersection between LAUs data and ET01. Then spatial intersection with PM2.5 data, for all years. Area-weighted average of PM2.5 values across the LAUs for national value. These three indicators rely on the same compilation process, hence we do them all at once. *Note: if one wanted to compile URAQ_005 directly, the first spatial intersection would not be necessary.*
 
 ```{r}
 #| eval: false
@@ -670,7 +670,7 @@ walk(seq_along(fylke_nb), function(i){
           filter(fylke_nr == !!fylke_nb[i])
   
   lau <- as_duckspatial_df("lau_33", conn = conn_pm) %>%
-          filter(fylke_nr == !!fylke_nb[i])
+          filter(Fylke_nummer == !!fylke_nb[i])
   
   # Intersection
   ddbs_intersection(et,
@@ -679,9 +679,65 @@ walk(seq_along(fylke_nb), function(i){
                     conn_x = conn_pm,
                     conn_y = conn_pm) %>% 
     
+    ddbs_make_valid() %>%
+    
     ddbs_area(new_column = "area_m2", name = paste0("lau_et01_", fylke_nb[i]), conn = conn_pm, overwrite = TRUE)
   
 })
+
+## Check valididty
+tables <- dbListTables(conn_pm) %>%
+            keep(~ startsWith(.x, "lau_et01_"))
+
+for(tbl in tables){
+  
+  message("Processing: ", tbl)
+  
+  # Checks
+  valid_check <- ddbs_is_valid(tbl, conn = conn_pm) %>%
+                    filter(!is_valid) %>%
+                    ddbs_collect() %>%
+                    dim()
+
+  empty_check <- ddbs_is_empty(tbl, conn = conn_pm) %>%
+                    filter(is_empty == TRUE) %>%
+                    ddbs_collect() %>%
+                    dim()
+
+  simple_check <- ddbs_is_simple(tbl, conn = conn_pm) %>%
+                    filter(!is_simple) %>%
+                    ddbs_collect() %>%
+                    dim()
+  
+  # Print - should all have 0 rows
+  print(valid_check)
+  print(empty_check)
+  print(simple_check)
+
+  
+}
+
+## Export the temporary layers, just in case of crash
+path_gpkg <- paste0(str_remove(tempdir(), "Rtmp\\w*"), "URAQ_tmp_layers/ET01_LAU_UNTM33.gpkg")
+
+for (lyr in fylke_nb){
+  
+essai <- as_duckspatial_df(paste0("lau_et01_", lyr), conn = conn_pm) %>%
+    ddbs_collect() %>%
+    select(!fid) %>%
+    st_write(path_gpkg,
+           layer = lyr,
+           append = TRUE)
+}
+
+
+## Clean the R environment
+rm(list = setdiff(ls(), 
+                  c("pm25_data",
+                    "pull",
+                    "conn_pm",
+                    "uraq_001_nat",
+                    "uraq_001_mun")))
 
 
 
