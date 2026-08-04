@@ -423,11 +423,13 @@ D-2 is stored in the temporary duckdb database.
 gk_path <- "/data/P-Prosjekter2/412413_2023_no_egd/git_data/GK_processed/GK_final_UTM33.gpkg"
 
 # Store in duckdb database
-ddbs_write_table(conn = conn_pm,
-           data = gk_path,
-           name = "grunnkart_33",
-           overwrite = TRUE) 
-
+dbExecute(conn_pm, 
+sprintf("
+  CREATE TABLE gk_et01_33 AS
+  SELECT * 
+  FROM ST_Read('%s', layer = '%s')
+", 
+gk_path, "Settlements and other artificial areas"))
 
 # Verify table is in my duckdb conn_pm database
 ddbs_list_tables(conn_pm)
@@ -570,7 +572,240 @@ To speed up the computation time, parallel computing has been used through the n
 
 ```{r}
 #| eval: false
+#| code-summary: "Spatial intersection LAU and PM2.5"
+
+## Select city LAUs
+lau_1 <- as_duckspatial_df(conn = conn_pm,
+                          "lau_33") %>%
+          filter(DEGURBA == 1) %>%
+          ddbs_area(new_column = "area_m2", overwrite = TRUE) %>%
+          ddbs_collect()
+
+
+## Wrap pm25 data for parallelisation
+pm25_data_w <- map(pm25_data,
+                   wrap)
+
+## Extract the values of PM2.5 data per LAU
+daemons(8)
+
+lau1_pm25 <- map(seq_along(pm25_data_w), in_parallel(function(x){
+   
+   # Libraries  
+   library(exactextractr)
+   library(dplyr)
+   library(terra)
+  
+   # Unwrap raster
+   pm25_rast <- unwrap(pm25_data_w[[x]])
+  
+   # Run exact_extract
+   exact_extract(pm25_rast,
+                 lau_1,
+                 fun = c("mean"),
+                 append_cols = TRUE) %>%
+    mutate(., "Accounting period" = names(pm25_data_w)[x])
+  
+  }, 
+   lau_1 = lau_1,
+   pm25_data_w = pm25_data_w))
+
+daemons(0)
+```
+
+```{r}
+#| eval: false
 #| code-summary: "Compile URAQ_001"
+
+## URAQ national level - area-weighted mean
+uraq_001_nat <- map(seq_along(lau1_pm25), 
+                ~ weighted.mean(lau1_pm25[[.x]]$mean, lau1_pm25[[.x]]$area_m2)) 
+
+names(uraq_001_nat) <- names(pm25_data)
+            
+uraq_001_nat <- uraq_001_nat%>%
+                  bind_rows() %>%
+                  t() %>%
+                  as.data.frame() %>%
+                  rownames_to_column(var = "Year") %>%
+                  rename("Average PM2.5 concentration µg/m3" = V1)
+
+## URAQ municipal level
+uraq_001_mun <- lau1_pm25 %>%
+                  bind_rows() %>%
+                  select(!c(area_m2, Fylke_nummer, Fylke_navn, DEGURBA)) %>%
+                  relocate("Accounting period", .before = mean) %>%
+                  rename("Average PM2.5 concentration µg/m3" = mean,
+                         "Accounting area (municipality name)"= LAU_NAME,
+                         "Accounting area (municipality number)"= GISCO_ID) 
+                  
+## Clean the R environment
+rm(list = setdiff(ls(), 
+                  c("pm25_data",
+                    "pull",
+                    "conn_pm",
+                    "uraq_001_nat",
+                    "uraq_001_mun")))
+```
+
+
+# URAQ_002-3-4
+**Target area** = the area of ET01 in the LAU whose `DEGURBA` is `1` (URAQ_002), `2` (URAQ_003), `3` (URAQ_003).
+**Compilation process** = spatial intersection between LAUs data and ET01. Then spatial intersection with PM2.5 data, for all years. Area-weigthed average of PM2.5 values across the  LAUs for national value. These three indicators rely on the same compilation process, hence we do them all at once.
+
+```{r}
+#| eval: false
+#| code-summary: "Spatial intersection ET01 and LAU"
+
+## Intersect ET01 with LAUs - block processing to avoid memor issues
+# Block intersections
+fylke_nb <- as_duckspatial_df("lau_33", conn = conn_pm) %>% 
+              select(Fylke_nummer) %>%
+              ddbs_collect() %>%
+              st_drop_geometry() %>%
+              unique() %>%
+              as.vector()
+
+walk(seq_along(fylke_nb$Fylke_nummer), function(i){
+  
+  
+
+  
+  ddbs_intersection(et01_vec[i],
+                    lau_vec[i],
+                    conn = conn_pm,
+                    conn_x = conn_pm,
+                    conn_y = conn_pm) %>% 
+    
+    ddbs_area(new_column = "area_m2", name = paste0("lau_et01_", i), conn = conn_pm, overwrite = TRUE)
+  
+})
+
+
+  dbExecute(conn_pm, 
+sprintf("
+  CREATE TABLE grunnkart_intersection AS
+SELECT g.*, l.*
+FROM grunnkart_valid g
+JOIN lau_fylke l
+ON ST_Intersects(g.geom, l.geom)", 
+
+gk_path, "Settlements and other artificial areas"))
+
+```
+
+```{r}
+#| eval: false
+#| code-summary: "Spatial intersection ET01-LAU and PM2.5 data"
+#| 
+
+## Wrap pm25 data for parallelisation
+pm25_data_w <- map(pm25_data,
+                   wrap)
+
+## Write the three sub-datasets in the R environment
+lau_et01_list <- map(1:3 , function(x){
+  ddbs_collect(as_duckspatial_df(paste0("lau_et01_", x), conn = conn_pm))
+})
+
+
+## Extract the values of PM2.5 data per LAU - Block processing
+daemons(8)
+
+lauet01_pm25 <- map(seq_along(pm25_data_w), in_parallel(function(x){
+   
+   # Libraries  
+   library(exactextractr)
+   library(dplyr)
+   library(terra)
+  
+   # Unwrap raster
+   pm25_rast <- unwrap(pm25_data_w[[x]])
+  
+   # Run exact_extract
+   exact_extract(pm25_rast,
+                 lau_et01,
+                 fun = c("mean"),
+                 append_cols = TRUE) %>%
+    mutate(., "Accounting period" = names(pm25_data_w)[x])
+  
+  }, 
+   lau_et01 = lau_et01,
+   pm25_data_w = pm25_data_w))
+
+daemons(0)
+
+
+
+
+daemons(8)
+
+lau_et01_pm25 <- map(seq_along(pm25_data_w), function(table_idx){
+  
+  # Parallelise the extraction of PM2.5 cells for each year
+  
+  pm25_cells <- map(seq_along(yrs), in_parallel(function(j){
+      extract_rast(
+      path_rast_folder = "/data/P-Prosjekter2/412413_2023_no_egd/git_data/PM2.5/",
+      soaa_shp = soaa_filtered,
+      municipality = municipality_code,
+      year = yrs[j]
+    )
+    }, extract_rast = extract_rast,
+    soaa_filtered = soaa_filtered,
+    municipality_code = municipality_code,
+    yrs = yrs))
+  
+  return(pm25_cells)
+  
+  })
+
+daemons(0)
+```
+
+```{r}
+#| eval: false
+#| code-summary: "Compile URAQ_002-3-4"
+
+## URAQ national level - area-weighted mean
+uraq_002_nat <- map(seq_along(lau1_pm25), 
+                ~ weighted.mean(lau1_pm25[[.x]]$mean, lau1_pm25[[.x]]$area_m2)) 
+
+names(uraq_001_nat) <- names(pm25_data)
+            
+uraq_001_nat <- uraq_001_nat%>%
+                  bind_rows() %>%
+                  t() %>%
+                  as.data.frame() %>%
+                  rownames_to_column(var = "Year") %>%
+                  rename("Average PM2.5 concentration µg/m3" = V1)
+
+## URAQ municipal level
+uraq_001_mun <- lau1_pm25 %>%
+                  bind_rows() %>%
+                  select(!c(area_m2, Fylke_nummer, Fylke_navn, DEGURBA)) %>%
+                  relocate("Accounting period", .before = mean) %>%
+                  rename("Average PM2.5 concentration µg/m3" = mean,
+                         "Accounting area (municipality name)"= LAU_NAME,
+                         "Accounting area (municipality number)"= GISCO_ID) 
+                  
+## Clean the R environment
+rm(list = setdiff(ls(), 
+                  c("pm25_data",
+                    "pull",
+                    "conn_pm",
+                    "uraq_001_nat",
+                    "uraq_001_mun")))
+```
+
+
+
+# URAQ_005
+**Target area** = the area of ET01 in Norway.
+**Compilation process** = spatial intersection between LAUs data and ET01. Then spatial intersection with PM2.5 data, for all years. Area-weigthed average of PM2.5 values across the  LAUs for national value. These three indicators rely on the same compilation process, hence we do them all at once.
+```{r}
+#| eval: false
+#| code-summary: "Compile URAQ_005"
 
 ## Select city LAUs
 lau_1 <- as_duckspatial_df(conn = conn_pm,
@@ -641,103 +876,6 @@ rm(list = setdiff(ls(),
                     "uraq_001_nat",
                     "uraq_001_mun")))
 ```
-
-
-
-
-# URAQ_002-3-4
-**Target area** = the area of ET01 in the LAU whose `DEGURBA` is `1` (URAQ_002), `2` (URAQ_003), `3` (URAQ_003).
-**Compilation process** = spatial intersection between LAUs data and ET01. Then spatial intersection with PM2.5 data, for all years. Area-weigthed average of PM2.5 values across the  LAUs for national value. These three indicators rely on the same compilation process, hence we do them all at once.
-
-
-```{r}
-#| eval: false
-#| code-summary: "Compile URAQ_002-3-4"
-
-## Interspet ET01 with LAUs
-lau_et01 <- ddbs_intersection("grunnkart_33",
-                              "lau_33",
-                              conn = conn_pm,
-                              conn_x = conn_pm,
-                              conn_y = conn_pm,
-                              "lau_et01") %>% 
-                ddbs_area(new_column = "area_m2", overwrite = TRUE) %>%
-                ddbs_collect()
-
-
-## Wrap pm25 data for parallelisation
-pm25_data_w <- map(pm25_data,
-                   wrap)
-
-## Extract the values of PM2.5 data per LAU
-daemons(8)
-
-lauet01_pm25 <- map(seq_along(pm25_data_w), in_parallel(function(x){
-   
-   # Libraries  
-   library(exactextractr)
-   library(dplyr)
-   library(terra)
-  
-   # Unwrap raster
-   pm25_rast <- unwrap(pm25_data_w[[x]])
-  
-   # Run exact_extract
-   exact_extract(pm25_rast,
-                 lau_et01,
-                 fun = c("mean"),
-                 append_cols = TRUE) %>%
-    mutate(., "Accounting period" = names(pm25_data_w)[x])
-  
-  }, 
-   lau_et01 = lau_et01,
-   pm25_data_w = pm25_data_w))
-
-daemons(0)
-
-
-## URAQ national level - area-weighted mean
-uraq_002_nat <- map(seq_along(lau1_pm25), 
-                ~ weighted.mean(lau1_pm25[[.x]]$mean, lau1_pm25[[.x]]$area_m2)) 
-
-names(uraq_001_nat) <- names(pm25_data)
-            
-uraq_001_nat <- uraq_001_nat%>%
-                  bind_rows() %>%
-                  t() %>%
-                  as.data.frame() %>%
-                  rownames_to_column(var = "Year") %>%
-                  rename("Average PM2.5 concentration µg/m3" = V1)
-
-## URAQ municipal level
-uraq_001_mun <- lau1_pm25 %>%
-                  bind_rows() %>%
-                  select(!c(area_m2, Fylke_nummer, Fylke_navn, DEGURBA)) %>%
-                  relocate("Accounting period", .before = mean) %>%
-                  rename("Average PM2.5 concentration µg/m3" = mean,
-                         "Accounting area (municipality name)"= LAU_NAME,
-                         "Accounting area (municipality number)"= GISCO_ID) 
-                  
-## Clean the R environment
-rm(list = setdiff(ls(), 
-                  c("pm25_data",
-                    "pull",
-                    "conn_pm",
-                    "uraq_001_nat",
-                    "uraq_001_mun")))
-```
-
-
-
-
-
-
-For case (2) however, further manipulations are needed as we need to only extract the raster cells of the PM2.5 concentration maps that overlap with the ET01 polygons. This is what we do in the code below. Note that the function used for this (`exact_extract()`) only works if the geometry type is polygon or multipolygon. Hence, we first need to clean the ET01 maps that we created before to only extract the polygons. 
-
-
-# URAQ_005
-For case (2) however, further manipulations are needed as we need to only extract the raster cells of the PM2.5 concentration maps that overlap with the ET01 polygons. This is what we do in the code below. Note that the function used for this (`exact_extract()`) only works if the geometry type is polygon or multipolygon. Hence, we first need to clean the ET01 maps that we created before to only extract the polygons. 
-
 
 
 * **URAQ_001**: The *target area* is the *entire area* of the municipalities considered as "cities" according to Eurostat DEGURBA classification (`DEGURBA = 1`). As the total area of Norwegian municipalities is typically dominated by natural ecosystems (forests, wetlands, mountains, etc.) this option actually contradicts key principles of ecosystem accounting (i.e., the pollutant concentrations in a forest should be considered as the condition of the forest, not that of a potentially distant urban area).
