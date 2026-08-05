@@ -570,6 +570,7 @@ res_path <- paste0(get_root_NINA("P"), "412413_2023_no_egd/Results/URAQ/")
 
 To speed up the computation time, parallel computing has been used through the new `in_parallel()` function from the `purrr` package. This requires to make some adjustments in the code to make sure that the `workers`, or jobs running in parallel, have the objects present in the R environment and the packages. Indeed, when using `in_parallel()`, all packages and R objects of the environment are invisible to the `workers` if not explicitly stated in the `in_parallel()` function. Along the same lines, the raster data had to be wrapped to be parallelised. As is, Spatrasters are not parallelisable objects.
 
+We first start by the spatial intersection between LAUs considered as cities (`DEGURBA = 1`) and the PM2.5 data.
 ```{r}
 #| eval: false
 #| code-summary: "Spatial intersection LAU and PM2.5"
@@ -613,6 +614,7 @@ lau1_pm25 <- map(seq_along(pm25_data_w), in_parallel(function(x){
 daemons(0)
 ```
 
+Then we compile URAQ_001.
 ```{r}
 #| eval: false
 #| code-summary: "Compile URAQ_001"
@@ -653,11 +655,22 @@ rm(list = setdiff(ls(),
 **Target area** = the area of ET01 in the LAU whose `DEGURBA` is `1` (URAQ_002), `2` (URAQ_003), `3` (URAQ_003). The sum of all gives ET01 in all LAUs (URAQ_005)
 **Compilation process** = spatial intersection between LAUs data and ET01. Then spatial intersection with PM2.5 data, for all years. Area-weighted average of PM2.5 values across the LAUs for national value. These three indicators rely on the same compilation process, hence we do them all at once. *Note: if one wanted to compile URAQ_005 directly, the first spatial intersection would not be necessary.*
 
+We start by doing the spatial intersection between ET01 and LAUs. 
+
+*Note 1: the spatial intersection is done with `duckspatial` but we export the result in the R environment so the second spatial intersection with PM2.5 data can be performed in parallel. This is because the Duckdb connections don't transfer to parallel workers.*
+*Note 2: we modified the function ddbs_intersecion from the `duckspatial` package so it could return the columns of all the input datasets. This required us to take the code of ddbs_intersection() directly from its Github repo: https://github.com/Cidree/duckspatial/tree/main. It also required us to download a bunch of functions, from this same repo, necessary to run ddbs:intersection().*
+
+*Note 3: we add an extensive cleaning steps to ensure that the resultsing first intersection only has polygons or multipolygons gemoetries as it is a requirement from `exact_extract`.*
 ```{r}
 #| eval: false
 #| code-summary: "Spatial intersection ET01 and LAU"
 
 ## Intersect ET01 with LAUs - block processing to avoid memory issues
+
+# Source function to do ddbs_intersection and return all columns
+source(paste0(here::here(),"/indicators/NO_URAQ_001-005/R/functions/utils_fun_ddbs.R"))
+source(paste0(here::here(),"/indicators/NO_URAQ_001-005/R/functions/ddbs_intersection_uraq.R"))
+
 # Block intersections
 fylke_nb <- dbGetQuery(conn_pm, "SELECT DISTINCT Fylke_nummer FROM lau_33") %>%
               unname() %>%
@@ -671,19 +684,29 @@ walk(seq_along(fylke_nb), function(i){
   
   lau <- as_duckspatial_df("lau_33", conn = conn_pm) %>%
           filter(Fylke_nummer == !!fylke_nb[i])
+
   
   # Intersection
-  ddbs_intersection(et,
-                    lau,
-                    conn = conn_pm,
-                    conn_x = conn_pm,
-                    conn_y = conn_pm) %>% 
+  ddbs_intersection_uraq(lau,
+                         et,
+                         conn = conn_pm,
+                         conn_x = conn_pm,
+                         conn_y = conn_pm,
+                         keep_cols = "both") %>% 
     
     ddbs_make_valid() %>%
+    
+    # Need to remove linestrings and geometrycollection for extact_extract
+    mutate(geometry = ST_CollectionExtract(geometry, 3L)) %>% # clean up geometrycollections
+    filter(!ST_IsEmpty(geometry)) %>% # remove empty geometry resulting from the step above
+    filter(ddbs_geometry_type(geometry) %in% c("POLYGON", "MULTIPOLYGON")) %>% # keep only polygons and multipolygons
     
     ddbs_area(new_column = "area_m2", name = paste0("lau_et01_", fylke_nb[i]), conn = conn_pm, overwrite = TRUE)
   
 })
+
+# Verify table is in my duckdb conn_pm database
+ddbs_list_tables(conn_pm)
 
 ## Check valididty
 tables <- dbListTables(conn_pm) %>%
@@ -722,13 +745,38 @@ path_gpkg <- paste0(str_remove(tempdir(), "Rtmp\\w*"), "URAQ_tmp_layers/ET01_LAU
 
 for (lyr in fylke_nb){
   
-essai <- as_duckspatial_df(paste0("lau_et01_", lyr), conn = conn_pm) %>%
-    ddbs_collect() %>%
-    select(!fid) %>%
+as_duckspatial_df(paste0("lau_et01_", lyr), conn = conn_pm) %>%
+                ddbs_collect() %>%
+                rename(fid_original = fid) %>%
+    
     st_write(path_gpkg,
-           layer = lyr,
-           append = TRUE)
+             layer = lyr,
+             append = TRUE)
 }
+
+# ## Read intermediate layer (if needed)
+# layers <- st_layers(path_gpkg)$name
+# 
+# walk(layers, function(lyr) {
+# 
+#   ddbs_data <- ddbs_open_dataset(path_gpkg, layer = lyr, conn = conn_pm)
+# 
+#   ddbs_write_table(data = ddbs_data,
+#                    conn = conn_pm,
+#                    name = paste0("lau_et01_", lyr),
+#                    overwrite = TRUE)
+# 
+#   message("Wrote layer: ", lyr)
+# })
+
+## Merge then back together and store them in R environment for parallel processing at the next step
+lau_et01_all <- map(tables, function(tbl) {
+
+  as_duckspatial_df(tbl, conn = conn_pm) %>%
+    ddbs_collect()}) %>%
+  bind_rows() %>%
+  select(!c(fylke_nr)) %>%
+  relocate(okosystemtype_1, .before = geometry)
 
 
 ## Clean the R environment
@@ -737,12 +785,32 @@ rm(list = setdiff(ls(),
                     "pull",
                     "conn_pm",
                     "uraq_001_nat",
-                    "uraq_001_mun")))
+                    "uraq_001_mun",
+                    "fylke_nb",
+                    "lau_et01_all")))
+
+# Clean duckdb database
+tables <- dbListTables(conn_pm)
+
+for (tbl in tables) {
+
+  if(substr(tbl, 1, 9) == "temp_view"){
+
+    dbExecute(conn_pm, sprintf("DROP VIEW IF EXISTS %s", dbQuoteIdentifier(conn_pm, tbl)))
+
+  }else if(substr(tbl, 1, 9) == "temp_tabl"){
+
+    dbExecute(conn_pm, sprintf("DROP TABLE IF EXISTS %s", dbQuoteIdentifier(conn_pm, tbl)))
+
+  }
+
+}
 
 
 
 ```
 
+Now we do the spatial intersection with the ET01 in LAUs and PM2.5 data.
 ```{r}
 #| eval: false
 #| code-summary: "Spatial intersection ET01-LAU and PM2.5 data"
@@ -753,19 +821,22 @@ pm25_data_w <- map(pm25_data,
                    wrap)
 
 ## Retrieve pm25 per pyear and fylke
-lau_et01_pm25 <- map(seq_along(pm25_data_w)[1:2], function(yr){
+daemons(5)
+
+lau_et01_pm25 <- map(seq_along(pm25_data_w)[1], function(yr){
   
   # Input data
   pm25_w <- pm25_data_w[[yr]]
   year <- names(pm25_data_w)[yr]
   
+  message("Processing: ", year)
+  
   # Retrieve the (temporary) file path to conn_pm BEFORE going parallel
   db_path <- dbGetQuery(conn_pm, "PRAGMA database_list;") %>%
-    filter(name == "main") %>%
-    pull(file)
+                select(file)
   
-  # Parallelise
-  pm25_yr <- map(seq_along(fylke_nb)[1:2], in_parallel(function(fyk){
+    # Parallelise
+  pm25_yr <- map(seq_along(fylke_nb), in_parallel(function(fyk){
     
     # Libraries needed
     library(duckspatial)
@@ -775,15 +846,12 @@ lau_et01_pm25 <- map(seq_along(pm25_data_w)[1:2], function(yr){
     library(duckdb)
     library(DBI)
     
-    # Connection to duckdb database
-    conn_pm <- dbConnect(duckdb(), dbdir = db_path, read_only = TRUE)
-    on.exit(dbDisconnect(conn_pm, shutdown = TRUE), add = TRUE)
-    
-    # Retrieve et01 for filke fyk
-    lau_et01 <- ddbs_collect(as_duckspatial_df(paste0("lau_et01_", fylke_nb[fyk]), conn = conn_pm))
-    
     # Unwrap raster
     pm25_rast <- unwrap(pm25_w)
+    
+    # et01 for filke fyk
+    lau_et01 <- filter(lau_et01_all,
+                       Fylke_nummer == fylke_nb[fyk])
     
     # Run exact_extract
     exact_extract(pm25_rast, lau_et01, fun = c("mean"), append_cols = TRUE) %>%
@@ -793,18 +861,63 @@ lau_et01_pm25 <- map(seq_along(pm25_data_w)[1:2], function(yr){
   pm25_w = pm25_w,
   year = year,
   fylke_nb = fylke_nb,
-  db_path = db_path))
+  lau_et01_all = lau_et01_all))
   
 })
+
+daemons(0)
+
+# Close duckdb database
+ddbs_stop_conn(conn_pm)
+
+# Clean the R environment
+rm(list = setdiff(ls(), 
+                  c("pull",
+                    "uraq_001_nat",
+                    "uraq_001_mun",
+                    "lau_et01_all",
+                    "lau_et01_pm25")))
+
+# Close duckdb database
+ddbs_stop_conn(conn_pm)
+
 ```
+
+Finally, we compile the four remaining URAQ indicators: URAQ_002 to URAQ_005. During the extraction of the raster cell values, there will be the creation of "NA" values. This means that some polygon will have a PM2.5 concentration of "NA". There are two reasons to that:
+
+(1) This is an artifact due to the raster format of the PM2.5 concentration maps. While comparing them with the polygon of the municipalities, we noticed that some municipal raster maps were smaller than their associated municipal polygon. Hence, some polygons of settlements sadly fall outside of the PM2.5 concentration map while being in the municipal polygon. This leads to the creation of "NA" values. 
+
+(2) The raster maps had some holes in them. By definition, these rasters cells have then no data, which in turn creates NAs.
+
+
+We added a step of cleaning in the code below to remove these "NA" values. Overall though, it means that the final indicator value is slightly underestimated.
 
 ```{r}
 #| eval: false
-#| code-summary: "Compile URAQ_002-3-4"
+#| code-summary: "Compile URAQ_002"
 
 ## URAQ national level - area-weighted mean
-uraq_002_nat <- map(seq_along(lau1_pm25), 
-                ~ weighted.mean(lau1_pm25[[.x]]$mean, lau1_pm25[[.x]]$area_m2)) 
+
+uraq_001_nat <- map(seq_along(lau_et01_pm25), function(x){
+  lau_et01_pm25[[x]] %>%
+    bind_rows()
+  weighted.mean(lau1_pm25[[.x]]$mean, lau1_pm25[[.x]]$area_m2)) 
+} 
+                
+
+for(i in 1:15){
+  essai <- lau_et01_pm25[[3]][[i]] %>%
+    filter(DEGURBA == 1)
+  
+  print(which(is.na(essai$mean) == TRUE) %>% length)
+}
+
+
+
+uraq_002_nat <- uraq_data %>%
+                  filter(DEGURBA == 1) %>%
+                  group_by(`Accounting period`) %>%
+                  summarise("Average PM2.5 concentration µg/m3" = weighted.mean(.$mean, .$area_m2))
 
 names(uraq_001_nat) <- names(pm25_data)
             
