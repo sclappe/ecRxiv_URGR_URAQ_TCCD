@@ -823,7 +823,7 @@ pm25_data_w <- map(pm25_data,
 ## Retrieve pm25 per pyear and fylke
 daemons(5)
 
-lau_et01_pm25 <- map(seq_along(pm25_data_w)[1], function(yr){
+lau_et01_pm25 <- map(seq_along(pm25_data_w), function(yr){
   
   # Input data
   pm25_w <- pm25_data_w[[yr]]
@@ -897,22 +897,12 @@ We added a step of cleaning in the code below to remove these "NA" values. Overa
 #| code-summary: "Compile URAQ_002"
 
 ## URAQ national level - area-weighted mean
-
-uraq_001_nat <- map(seq_along(lau_et01_pm25), function(x){
+uraq_001_nat <- map(seq_along(lau_et01_pm25)[1:2], function(x){
   lau_et01_pm25[[x]] %>%
-    bind_rows()
-  weighted.mean(lau1_pm25[[.x]]$mean, lau1_pm25[[.x]]$area_m2)) 
-} 
+    bind_rows() %>%
+    summarise(pm25 = stats:::weighted.mean(mean, area_m2, na.rm =TRUE))}) 
+
                 
-
-for(i in 1:15){
-  essai <- lau_et01_pm25[[3]][[i]] %>%
-    filter(DEGURBA == 1)
-  
-  print(which(is.na(essai$mean) == TRUE) %>% length)
-}
-
-
 
 uraq_002_nat <- uraq_data %>%
                   filter(DEGURBA == 1) %>%
