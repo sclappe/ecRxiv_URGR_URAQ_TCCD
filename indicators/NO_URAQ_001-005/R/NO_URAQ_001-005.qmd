@@ -936,7 +936,48 @@ rm(list = setdiff(ls(),
 ```
 
 
+```{r}
+#| eval: false
+#| code-summary: "Compile URAQ_003"
 
+## URAQ national level - area-weighted mean
+uraq_003_nat <- map(seq_along(lau_et01_pm25), function(x){
+                      lau_et01_pm25[[x]] %>%
+                        bind_rows() %>%
+                        filter(DEGURBA == 2) %>%
+                        summarise("Average PM2.5 concentration µg/m3" = stats:::weighted.mean(mean, area_m2, na.rm =TRUE))}) 
+
+uraq_002_nat <- uraq_002_nat %>%
+                  bind_rows() %>%
+                  mutate(Year = as.numeric(names(pm25_data)))
+  
+  
+
+## URAQ municipal level
+uraq_003_mun <- map(seq_along(lau_et01_pm25), function(x){
+                        lau_et01_pm25[[x]] %>%
+                          bind_rows() %>%
+                          filter(DEGURBA == 2) %>%
+                          group_by(LAU_NAME, GISCO_ID) %>%
+                          summarise("Average PM2.5 concentration µg/m3" = stats:::weighted.mean(mean, area_m2, na.rm =TRUE))%>%
+                  rename("Accounting area (municipality name)"= LAU_NAME,
+                         "Accounting area (municipality number)"= GISCO_ID)}) 
+  
+uraq_002_mun <- uraq_002_mun %>%
+                  bind_rows() %>%
+                  mutate(Year = as.numeric(names(pm25_data)))
+                  
+## Clean the R environment
+rm(list = setdiff(ls(), 
+                  c("pm25_data",
+                    "pull",
+                    "conn_pm",
+                    "lau_et01_pm25",
+                    "uraq_001_nat",
+                    "uraq_001_mun",
+                    "uraq_002_nat",
+                    "uraq_002_mun")))
+```
 
 
 
