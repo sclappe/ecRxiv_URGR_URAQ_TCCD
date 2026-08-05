@@ -898,11 +898,11 @@ We added a step of cleaning in the code below to remove these "NA" values. Overa
 
 ## URAQ national level - area-weighted mean
 uraq_002_nat <- map(seq_along(lau_et01_pm25), function(x){
-  lau_et01_pm25[[x]] %>%
-    bind_rows() %>%
-    filter(DEGURBA == 1) %>%
-    summarise("Average PM2.5 concentration µg/m3" = stats:::weighted.mean(mean, area_m2, na.rm =TRUE))}) 
-            
+                      lau_et01_pm25[[x]] %>%
+                        bind_rows() %>%
+                        filter(DEGURBA == 1) %>%
+                        summarise("Average PM2.5 concentration µg/m3" = stats:::weighted.mean(mean, area_m2, na.rm =TRUE))}) 
+
 uraq_002_nat <- uraq_002_nat %>%
                   bind_rows() %>%
                   mutate(Year = as.numeric(names(pm25_data)))
@@ -910,21 +910,29 @@ uraq_002_nat <- uraq_002_nat %>%
   
 
 ## URAQ municipal level
-uraq_001_mun <- lau1_pm25 %>%
+uraq_002_mun <- map(seq_along(lau_et01_pm25), function(x){
+                        lau_et01_pm25[[x]] %>%
+                          bind_rows() %>%
+                          filter(DEGURBA == 1) %>%
+                          group_by(LAU_NAME, GISCO_ID) %>%
+                          summarise("Average PM2.5 concentration µg/m3" = stats:::weighted.mean(mean, area_m2, na.rm =TRUE))%>%
+                  rename("Accounting area (municipality name)"= LAU_NAME,
+                         "Accounting area (municipality number)"= GISCO_ID)}) 
+  
+uraq_002_mun <- uraq_002_mun %>%
                   bind_rows() %>%
-                  select(!c(area_m2, Fylke_nummer, Fylke_navn, DEGURBA)) %>%
-                  relocate("Accounting period", .before = mean) %>%
-                  rename("Average PM2.5 concentration µg/m3" = mean,
-                         "Accounting area (municipality name)"= LAU_NAME,
-                         "Accounting area (municipality number)"= GISCO_ID) 
+                  mutate(Year = as.numeric(names(pm25_data)))
                   
 ## Clean the R environment
 rm(list = setdiff(ls(), 
                   c("pm25_data",
                     "pull",
                     "conn_pm",
+                    "lau_et01_pm25",
                     "uraq_001_nat",
-                    "uraq_001_mun")))
+                    "uraq_001_mun",
+                    "uraq_002_nat",
+                    "uraq_002_mun")))
 ```
 
 
