@@ -947,7 +947,7 @@ uraq_003_nat <- map(seq_along(lau_et01_pm25), function(x){
                         filter(DEGURBA == 2) %>%
                         summarise("Average PM2.5 concentration µg/m3" = stats:::weighted.mean(mean, area_m2, na.rm =TRUE))}) 
 
-uraq_002_nat <- uraq_002_nat %>%
+uraq_003_nat <- uraq_003_nat %>%
                   bind_rows() %>%
                   mutate(Year = as.numeric(names(pm25_data)))
   
@@ -963,7 +963,7 @@ uraq_003_mun <- map(seq_along(lau_et01_pm25), function(x){
                   rename("Accounting area (municipality name)"= LAU_NAME,
                          "Accounting area (municipality number)"= GISCO_ID)}) 
   
-uraq_002_mun <- uraq_002_mun %>%
+uraq_003_mun <- uraq_003_mun %>%
                   bind_rows() %>%
                   mutate(Year = as.numeric(names(pm25_data)))
                   
@@ -979,7 +979,48 @@ rm(list = setdiff(ls(),
                     "uraq_002_mun")))
 ```
 
+```{r}
+#| eval: false
+#| code-summary: "Compile URAQ_004"
 
+## URAQ national level - area-weighted mean
+uraq_004_nat <- map(seq_along(lau_et01_pm25), function(x){
+                      lau_et01_pm25[[x]] %>%
+                        bind_rows() %>%
+                        filter(DEGURBA == 3) %>%
+                        summarise("Average PM2.5 concentration µg/m3" = stats:::weighted.mean(mean, area_m2, na.rm =TRUE))}) 
+
+uraq_004_nat <- uraq_004_nat %>%
+                  bind_rows() %>%
+                  mutate(Year = as.numeric(names(pm25_data)))
+  
+  
+
+## URAQ municipal level
+uraq_004_mun <- map(seq_along(lau_et01_pm25), function(x){
+                        lau_et01_pm25[[x]] %>%
+                          bind_rows() %>%
+                          filter(DEGURBA == 2) %>%
+                          group_by(LAU_NAME, GISCO_ID) %>%
+                          summarise("Average PM2.5 concentration µg/m3" = stats:::weighted.mean(mean, area_m2, na.rm =TRUE))%>%
+                  rename("Accounting area (municipality name)"= LAU_NAME,
+                         "Accounting area (municipality number)"= GISCO_ID)}) 
+  
+uraq_004_mun <- uraq_004_mun %>%
+                  bind_rows() %>%
+                  mutate(Year = as.numeric(names(pm25_data)))
+                  
+## Clean the R environment
+rm(list = setdiff(ls(), 
+                  c("pm25_data",
+                    "pull",
+                    "conn_pm",
+                    "lau_et01_pm25",
+                    "uraq_001_nat",
+                    "uraq_001_mun",
+                    "uraq_002_nat",
+                    "uraq_002_mun")))
+```
 
 ### Define urban areas
 To be able to delineate the *target area* for the different versions of the indicator we need to create polygons delineating (i) the urban ecosystems (i.e. ET01) from all other ecosystem types, and (ii) the municipalities from each other. In addition we will need to distinguish different types of municipalities according to their "degree of urbanisation" (DEGURBA).
