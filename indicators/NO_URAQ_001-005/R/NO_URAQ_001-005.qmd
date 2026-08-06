@@ -879,9 +879,10 @@ uraq_002_mun <- map(seq_along(lau_et01_pm25), function(x){
                           bind_rows() %>%
                           filter(DEGURBA == 1) %>%
                           group_by(LAU_NAME, GISCO_ID) %>%
-                          summarise("Average PM2.5 concentration µg/m3" = stats:::weighted.mean(mean, area_m2, na.rm =TRUE))%>%
-                  rename("Accounting area (municipality name)"= LAU_NAME,
-                         "Accounting area (municipality number)"= GISCO_ID)}) 
+                          summarise("Average PM2.5 concentration µg/m3" = stats:::weighted.mean(mean, area_m2, na.rm =TRUE)) %>%
+                          relocate(LAU_NAME, .after = GISCO_ID) %>%
+                          rename("Accounting area (municipality name)"= LAU_NAME,
+                                 "Accounting area (municipality number)"= GISCO_ID) }) 
   
 uraq_002_mun <- uraq_002_mun %>%
                   bind_rows() %>%
@@ -923,9 +924,10 @@ uraq_003_mun <- map(seq_along(lau_et01_pm25), function(x){
                           bind_rows() %>%
                           filter(DEGURBA == 2) %>%
                           group_by(LAU_NAME, GISCO_ID) %>%
-                          summarise("Average PM2.5 concentration µg/m3" = stats:::weighted.mean(mean, area_m2, na.rm =TRUE))%>%
-                  rename("Accounting area (municipality name)"= LAU_NAME,
-                         "Accounting area (municipality number)"= GISCO_ID)}) 
+                          summarise("Average PM2.5 concentration µg/m3" = stats:::weighted.mean(mean, area_m2, na.rm =TRUE)) %>%
+                          relocate(LAU_NAME, .after = GISCO_ID)  %>%
+                          rename("Accounting area (municipality name)"= LAU_NAME,
+                                 "Accounting area (municipality number)"= GISCO_ID)}) 
   
 uraq_003_mun <- uraq_003_mun %>%
                   bind_rows() %>%
@@ -968,9 +970,10 @@ uraq_004_mun <- map(seq_along(lau_et01_pm25), function(x){
                           bind_rows() %>%
                           filter(DEGURBA == 3) %>%
                           group_by(LAU_NAME, GISCO_ID) %>%
-                          summarise("Average PM2.5 concentration µg/m3" = stats:::weighted.mean(mean, area_m2, na.rm =TRUE))%>%
-                  rename("Accounting area (municipality name)"= LAU_NAME,
-                         "Accounting area (municipality number)"= GISCO_ID)}) 
+                          summarise("Average PM2.5 concentration µg/m3" = stats:::weighted.mean(mean, area_m2, na.rm =TRUE)) %>%
+                          relocate(LAU_NAME, .after = GISCO_ID) %>%
+                          rename("Accounting area (municipality name)"= LAU_NAME,
+                                 "Accounting area (municipality number)"= GISCO_ID)}) 
   
 uraq_004_mun <- uraq_004_mun %>%
                   bind_rows() %>%
@@ -1070,6 +1073,16 @@ nat_tbl_list <- map(seq_along(nat_tbl), function(x){
 res_national <- bind_rows(nat_tbl_list)
 res_national$`Average PM2.5 concentration µg/m3` <- round2(res_national$`Average PM2.5 concentration µg/m3`, digits = 2)
 
+# Clean R environment
+rm(list = setdiff(ls(), 
+                  c("pull",
+                    "res_national",
+                    "uraq_001_mun",
+                    "uraq_002_mun",
+                    "uraq_003_mun",
+                    "uraq_004_mun")))
+
+# Show table
 datatable(res_national, filter = "top")
 ```
 
@@ -1080,66 +1093,38 @@ datatable(res_national, filter = "top")
 #| message : false
 #| code-summary: "Municipal summary table"
 
-# Read exported table
-soaa_res_processed <- read.table(paste0(res_path, "URAQ_SOAA_summary_table_10OCT2025.csv"), sep = ";", head = TRUE)
-municip_res_processed <- read.table(paste0(res_path, "URAQ_municipality_summary_table_10OCT2025.csv"), sep = ";", head = TRUE)
+# Format individual tables
+mun_tbl <- list(uraq_001_mun,
+                uraq_002_mun,
+                uraq_003_mun,
+                uraq_004_mun)
 
-# Compile the different URAQ indicators at regional level
-uraq_001_mun <- municip_res_processed %>%
-                select(year, kommune_nummer, LAU_NAM, DEGURBA, mean_pm25_municip_ug_m3) %>%
-                mutate(w_mean_pm25_ug_m3 = round2(mean_pm25_municip_ug_m3, 2),
-                       se_pm25_ug_m3 = NA,
-                       ID = "URAQ 001") %>%
-                select(!mean_pm25_municip_ug_m3)
+ind_names <- paste0("URAQ_00", 1:5)
 
-uraq_002_mun <- soaa_res_processed %>%
-                select(year, kommune_nummer, LAU_NAM, DEGURBA, w_mean_soaa_pm25_ug_m3, se_soaa_pm25_ug_m3) %>%
-                rename(w_mean_pm25_ug_m3 = w_mean_soaa_pm25_ug_m3,
-                        se_pm25_ug_m3 = se_soaa_pm25_ug_m3) %>%
-                filter(DEGURBA == 1) %>%
-                mutate(ID = "URAQ 002")
+mun_tbl_list <- map(seq_along(mun_tbl), function(x){
+  
+  mun_tbl[[x]] %>%
+    mutate(Indicator = "Urban Air Quality",
+           ID = ind_names[x],
+           .before = `Accounting area (municipality number)`) 
+})
 
-uraq_003_mun <- soaa_res_processed %>%
-                select(year, kommune_nummer, LAU_NAM, DEGURBA, w_mean_soaa_pm25_ug_m3, se_soaa_pm25_ug_m3) %>%
-                rename(w_mean_pm25_ug_m3 = w_mean_soaa_pm25_ug_m3,
-                        se_pm25_ug_m3 = se_soaa_pm25_ug_m3) %>%
-                filter(DEGURBA == 2) %>%
-                mutate(ID = "URAQ 003")
+# Merge all table stogether
+res_municipal <- bind_rows(mun_tbl_list)
+res_municipal$`Average PM2.5 concentration µg/m3` <- round2(res_municipal$`Average PM2.5 concentration µg/m3`, digits = 2)
 
-uraq_004_mun <- soaa_res_processed %>%
-                select(year, kommune_nummer, LAU_NAM, DEGURBA, w_mean_soaa_pm25_ug_m3, se_soaa_pm25_ug_m3) %>%
-                rename(w_mean_pm25_ug_m3 = w_mean_soaa_pm25_ug_m3,
-                        se_pm25_ug_m3 = se_soaa_pm25_ug_m3) %>%
-                filter(DEGURBA == 3) %>%
-                mutate(ID = "URAQ 004")
+# Clean R environment
+rm(list = setdiff(ls(), 
+                  c("pull",
+                    "res_municipal")))
 
-res_municip <- bind_rows(uraq_001_mun,
-                         uraq_002_mun,
-                         uraq_003_mun,
-                         uraq_004_mun) %>%
-              mutate(Indicator = "Urban Air Quality") %>%
-              select(Indicator, ID, kommune_nummer, LAU_NAM, year, w_mean_pm25_ug_m3, se_pm25_ug_m3)
-
-res_municip$se_pm25_ug_m3 <- as.character(res_municip$se_pm25_ug_m3) %>%
-                                replace_na("Not available")
-
-colnames(res_municip) <- c("Indicator",
-                           "ID",
-                           "Accounting area (municipality number)",
-                           "Accounting area (municipality name)",
-                           "Accounting period",
-                           "Average PM2.5 concentration (µg/m3)",
-                           "Standard error (µg/m3)")
-
-
-datatable(res_municip, filter = "top")
+# Show table
+datatable(res_municipal, filter = "top")
 ```
 
 
 
 ## 11. Export file
-
-
 Finally we present a sample code which can export the results into csv or xlsx files: 
 
 ```{r export}
@@ -1147,12 +1132,12 @@ Finally we present a sample code which can export the results into csv or xlsx f
 #| code-summary: "Code to export the result tables above"
 
 #CSV
-write.table(res_national, "URAQ_NO_national_2016_2023.csv")
-write.table(res_municip, "URAQ_NO_regional_2016_2023.csv")
+write.table(res_national, "URAQ_NO_national_2016_2024.csv")
+write.table(res_municipal, "URAQ_NO_regional_2016_2024.csv")
 
 # #Excel
-# write_xlsx(res_national, "URAQ_NO_national_2016_2023.xlsx")
-# write_xlsx(res_municip, "URAQ_NO_regional_2016_2023.xlsx")
+# write_xlsx(res_national, "URAQ_NO_national_2016_2024.xlsx")
+# write_xlsx(res_municip, "URAQ_NO_regional_2016_2024.xlsx")
 
 ```
 
