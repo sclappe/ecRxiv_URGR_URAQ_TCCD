@@ -287,29 +287,22 @@ In addition we use several further administrative datasets to delineate the indi
 ### 2.1 Spatial and temporal resolution and extent
 The nominal resolution of Copernicus HRL IMD is 100 m^2^ (10 x 10 m), but each pixel contains information about the density (%) of (non-)impervious surfaces in the grid cell, making it possible to determine the density of focal features (urban green) with a useful resolution of 1 m^2^ (variants URGR_001-004). This layer is normally updated in every third year, and the updates usually become available with a delay of 2-3 years. 
 
-The spatial resolution of Copernicus CLC is 100 m^2^. The "classic" Copernicus CLC datasets have a long time series with a 6-year update cycle. The next update will cover the year 2024, and it is scheduled for 2026. Nevertheless, the long-term future of this dataset seems uncertain.  
-
-All other spatial data files, including the Grunnkart and the Local Administrative Units (LAU) are vector data (polygons). Unlike traditional land cover maps (e.g., CLC), the Grunnkart does not have a single, universal Minimum Mapping Unit (MMU). Instead, the spatial resolution of the Grunnkart is directly inherited from the underlying source datasets used in its creation. This is because the new map is a synthesis and reclassification of existing data rather than a new, independent mapping effort. As the majority of spatial information available in public datasets focuses on human settlements and infrastructure, urban ecosystems are relatively finely represented in the Grunnkart, especially compared to seminatural and natural ecosystem types. This makes the contours of ET01 overly-detailed, often delineating individual buildings or roads passing through a forest as “urban ecosystems”. This also makes the dataset somewhat unfit for its purpose (@Rendon2025) and cumbersome to process.
+All other spatial data files, including the Grunnkart and the Local Administrative Units (LAU) are vector data (polygons). Unlike traditional land cover maps, the Grunnkart does not have a single, universal Minimum Mapping Unit (MMU). Instead, the spatial resolution of the Grunnkart is directly inherited from the underlying source datasets used in its creation. This is because the new map is a synthesis and reclassification of existing data rather than a new, independent mapping effort. As the majority of spatial information available in public datasets focuses on human settlements and infrastructure, urban ecosystems are relatively finely represented in the Grunnkart, especially compared to seminatural and natural ecosystem types. This makes the contours of ET01 overly-detailed, often delineating individual buildings or roads passing through a forest as “urban ecosystems”. This also makes the dataset somewhat unfit for its purpose (@Rendon2025) and cumbersome to process.
 
 
 ### 2.2 Original units
 The original unit of Copernicus HRL imperviousness is percentages (the share of impervious areas in the pixel), which is the complement of our quantity of interest (1-imperviousness, interpreted as the share of "urban green" surfaces in the pixel, also in %). This is congruent with the units of the final variable (the share of urban green in the "target area"), which can be expressed both as a number between 0 and 1, as well as in percentages (%). 
 
 ### 2.3 Additional comments about the dataset
-The actual boundaries of the municipalities were taken from Eurostat Local Administrative Units (2023). Note that in URAQ and TCCD, which are indicators closely related to URGR, we updated Eurostat Local Administrative Units with the Kartverkert national municipalities boundaries (2024). This was because the results were displayed by each municipality individually. In URGR, we chose to report by the results by region due to heavier computation time, hence Eurostat Local Administrative Units (2023) did not need any corrections. The DEGURBA dataset was only used to classify the Norwegian municipalities into three categories (1: “cities”, 2: “towns and suburbs”, 3: “rural areas”) based on their degree of urbanisation.
-
-
 #### 2.3.1 Instructions for citing, using and accessing data
 
 || Publicly accessible to download | Data and metadata available at |
 |----|--|--------|
 | **Copernicus HRL IMD**     | Yes | Available from the [EEA](https://land.copernicus.eu/en/products/high-resolution-layer-imperviousness)|
-| **Copernicus CLC**      | Yes | Available from the [EEA](https://land.copernicus.eu/en/products/corine-land-cover?tab=datasets)|
 | **Grunnkart**  | No, only upon request to [NIBIO](https://kartkatalog.geonorge.no/metadata/nasjonalt-grunnkart-for-arealanalyse-testversjon-2/28c28e3a-d88f-4a34-8c60-5efe6d56a44d) | We used testversion 0.2, description available in @strand2024 and @gk2 |
 
 
 ## 3. Indicator properties
-
 ### 3.1 Ecosystem Condition Typology Class (ECT)
 
 The condition variable *urban green areas* (i.e. the share of green areas in urban ecosystems) belongs to ECT class B2 (structural state characteristics).
