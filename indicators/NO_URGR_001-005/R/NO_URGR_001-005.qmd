@@ -405,7 +405,7 @@ conn_ug <- ddbs_create_conn(dbdir = "tempdir", threads = 10, memory_limit_gb = 3
 
 ```
 
-### 7.1 Copernicus IMD
+### 7.1 Copernicus IMD (D-1)
 We have nine rasters to load, we first create a list of files before reading them and storing them in a list object. The only cleaning step was to create a virtual raster. We did not apply any mask for Norway on the IMD data as the use of the `exact_extract()` function will restrict the urban green indicators to the polygons terrestrial urban ecosystems or terretsrial LAUs boundaries.
 
 ```{r}
@@ -432,41 +432,110 @@ rm(list = setdiff(ls(),
 ```
 
 
-### 7.2 7.2 Grunnkart (D-2)
+### 7.2 Grunnkart (D-2)
 D-2 is stored in the temporary duckdb database. We create one table for ET01 (Settlements and other artificial areas), and one for the other ecosystem types (ETs), excluding ET12 (Marine ecosystems) as they are excluded from Eurostat's definition of URGR_005.
+
+The cleaning process of the Grunnkart included several steps: (i) correction of geometry; (ii) union of the polygons per ecosystem type at level 1 of the EU typology; (iii) BALINT.
+
+To facilitate analyses in block processes afterwards, we create one table per fylke.
 
 ```{r}
 #| eval: false
-#| code-summary: "Load Grunnkart"
+#| code-summary: "Load Grunnkart - not ET01"
 
 # Path to GK
-gk_path <- "/data/P-Prosjekter2/412413_2023_no_egd/git_data/GK_processed/GK_final_UTM33.gpkg"
+
+gk_path <- "/data/P-Prosjekter2/412413_2023_no_egd/git_data/GK_processed/fylke_level"
+gk_33_list <- dir(gk_path, pattern = "UTM33",recursive = FALSE, full.names = TRUE)
 
 # Store in duckdb database
-dbExecute(conn_pm, 
-sprintf("
-  CREATE TABLE '%s' AS
-  SELECT * 
-  FROM ST_Read('%s', layer = '%s')
-", 
-gk_path, "Settlements and other artificial areas"))
+walk(gk_33_list, function(x){
+  
+  dbExecute(conn_ug, 
+      sprintf("
+        CREATE TABLE '%s' AS
+        SELECT * 
+        FROM ST_Read('%s')
+        WHERE okosystemtype_1 IS DISTINCT FROM 'Settlements and other artificial areas'
+      ", 
+paste0("gk_33_", str_extract(x, "(?<=UTM33_).{2}")),
+x))
+  
+})
 
-dbExecute(conn_pm, 
-sprintf("
-  CREATE TABLE '%s' AS
-  SELECT * 
-  FROM ST_Read('%s', layer = '%s')
-", 
-gk_path, "Settlements and other artificial areas"))
 
-# Verify table is in my duckdb conn_pm database
-ddbs_list_tables(conn_pm)
+# Verify tables are in my duckdb conn_pm database
+ddbs_list_tables(conn_ug)
 
 # Clean the R environment
 rm(list = setdiff(ls(), 
-                  c("pm25_data",
+                  c("imd_data",
                     "pull",
-                    "conn_pm")))
+                    "conn_ug",
+                    "gk_path",
+                    "gk_33_list")))
+```
+
+```{r}
+#| eval: false
+#| code-summary: "Load Grunnkart - ET01"
+
+# Store in duckdb database
+walk(gk_33_list, function(x){
+  
+  dbExecute(conn_ug, 
+      sprintf("
+        CREATE TABLE '%s' AS
+        SELECT * 
+        FROM ST_Read('%s')
+        WHERE okosystemtype_1 == 'Settlements and other artificial areas'
+      ", 
+paste0("gk_et01_33_", str_extract(x, "(?<=UTM33_).{2}")),
+x))
+  
+})
+
+
+# Verify tables are in my duckdb conn_pm database
+ddbs_list_tables(conn_ug)
+
+# Clean the R environment
+rm(list = setdiff(ls(), 
+                  c("imd_data",
+                    "pull",
+                    "conn_ug")))
+```
+
+The last thing we need to do is to load subtypes 1.4 Urban greenspace and 1.5.2 Cemeteries from the Grunnkart. For this, we kept an intermediary product from the cleaning process we did on the Grunnkart. This intermediary layer is the Grunnkart whose geometry has been corrected but the ETs has not yet been merged at level 1.
+#####I STOPPED HERE
+```{r}
+#| eval: false
+#| code-summary: "Load Grunnkart - ET01"
+
+# Store in duckdb database
+walk(gk_33_list, function(x){
+  
+  dbExecute(conn_ug, 
+      sprintf("
+        CREATE TABLE '%s' AS
+        SELECT * 
+        FROM ST_Read('%s')
+        WHERE okosystemtype_1 == 'Settlements and other artificial areas'
+      ", 
+paste0("gk_et01_33_", str_extract(x, "(?<=UTM33_).{2}")),
+x))
+  
+})
+
+
+# Verify tables are in my duckdb conn_pm database
+ddbs_list_tables(conn_ug)
+
+# Clean the R environment
+rm(list = setdiff(ls(), 
+                  c("imd_data",
+                    "pull",
+                    "conn_ug")))
 ```
 
 
