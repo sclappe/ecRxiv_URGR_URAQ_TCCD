@@ -532,38 +532,6 @@ The indicator values of the PM2.5 variable can be interpreted at any spatial sca
 
 
 ## 9. Analyses
-
-### Paths to data sources
-Before starting any of the analyses, we store the path in which the data will be found. If readers wish to download the data and run this code, they can just change the paths below to their local paths for the rest of the code to function. Note: most of the data used in this script are big and required pre-processing. Some of them could be requested through API but others could not. We chose to make the code available for API requests and pre-processing here but could not make the data directly available due to their large size. 
-```{r}
-#| eval: true
-#| code-summary: "Paths to the data"
-
-# DEGURBA from Eurostat
-path_degurba <- "/data/P-Prosjekter2/412413_2023_no_egd/git_data/Adminstrative_boundaries_NO/LAU_DEGURBA_Eurostat/EU-27-LAU-2024-NUTS-2024.xlsx"
-
-# LAUs shapefile from Eurostat
-path_lau <- "/data/P-Prosjekter2/412413_2023_no_egd/git_data/Adminstrative_boundaries_NO/LAU_Eurostat/LAU_RG_01M_2023_3035.shp"
-path_lau_folder <- "/data/P-Prosjekter2/412413_2023_no_egd/git_data/Adminstrative_boundaries_NO/LAU_Eurostat/"
-
-# Municipalities from Kartverkert
-path_kom <- "/data/R/GeoSpatialData/AdministrativeUnits/Norway_AdministrativeUnits/Original/Norway_Municipalities/Administrative enheter kommuner FGDB-format/Basisdata_0000_Norge_25833_Kommuner_FGDB/Basisdata_0000_Norge_25833_Kommuner_FGDB.gdb"
-
-# Municipalities number 2023 and 2024
-path_kom_nb <- "/data/P-Prosjekter2/412413_2023_no_egd/git_data/Adminstrative_boundaries_NO/NO_Fylke/kommune_fylke_region_NO_2024.xlsx"
-
-# Grunnkart
-path_grunnkart <- "/data/R/GeoSpatialData/LandUse/Norway_Arealregnskap/Original/GrunnkartArealregnskap FGDB-format/"
-
-# Path to functions
-path_fn <- here::here("/indicators/NO_URAQ_001_005/R/functions")
-
-# Path to write results
-res_path <- paste0(get_root_NINA("P"), "412413_2023_no_egd/Results/URAQ/")
-
-```
-
-
 # URAQ_001
 **Target area** = the entire area of the LAU classifies as "cities", meaning with `DEGURBA = 1`.
 **Compilation process** = spatial intersection between LAUs data and PM2.5 data, for all years. Area-weighted average the PM2.5 values across LAUs for national value. The function used for that is `exact_extract`.
@@ -605,7 +573,7 @@ lau1_pm25 <- map(seq_along(pm25_data_w), in_parallel(function(x){
                  lau_1,
                  fun = c("mean"),
                  append_cols = TRUE) %>%
-    mutate(., "Accounting period" = names(pm25_data_w)[x])
+    mutate(., "Accounting period" = as.numeric(names(pm25_data_w)[x]))
   
   }, 
    lau_1 = lau_1,
@@ -754,7 +722,7 @@ as_duckspatial_df(paste0("lau_et01_", lyr), conn = conn_pm) %>%
              append = TRUE)
 }
 
-# ## Read intermediate layer (if needed)
+## Read intermediate layer (if needed)
 # layers <- st_layers(path_gpkg)$name
 # 
 # walk(layers, function(lyr) {
@@ -805,8 +773,6 @@ for (tbl in tables) {
   }
 
 }
-
-
 
 ```
 
@@ -873,13 +839,11 @@ ddbs_stop_conn(conn_pm)
 # Clean the R environment
 rm(list = setdiff(ls(), 
                   c("pull",
+                    "pm25_data",
                     "uraq_001_nat",
                     "uraq_001_mun",
                     "lau_et01_all",
                     "lau_et01_pm25")))
-
-# Close duckdb database
-ddbs_stop_conn(conn_pm)
 
 ```
 
@@ -1082,68 +1046,29 @@ Below, we present two kinds of summary table: one national, and one presenting a
 #| eval: true
 #| code-summary: "National summary table"
 
-# Format table
+# Format individual tables
+nat_tbl <- list(uraq_001_nat,
+                uraq_002_nat,
+                uraq_003_nat,
+                uraq_004_nat,
+                uraq_005_nat)
 
+ind_names <- paste0("URAQ_00", 1:5)
 
-uraq_001_nat <- municip_res_processed %>%
-                select(year, kommune_nummer, DEGURBA, mean_pm25_municip_ug_m3, area_m2) %>%
-                filter(DEGURBA == 1) %>%
-                group_by(year) %>%
-                summarise(w_mean_pm25_nat = round2(weighted.mean(mean_pm25_municip_ug_m3, area_m2), 2),
-                          count_n = n(), 
-                          se_pm25_nat = round2(sd(mean_pm25_municip_ug_m3)/sqrt(count_n), 2)) %>%
-                mutate(ID = "URAQ 001") 
+nat_tbl_list <- map(seq_along(nat_tbl), function(x){
+  
+  nat_tbl[[x]] %>%
+    mutate(Indicator = "Urban Air Quality",
+           ID = ind_names[x],
+           "Accounting Area" = "Norway",
+           .before = "Average PM2.5 concentration µg/m3") %>%
+    relocate(Year, .after = "Accounting Area") %>%
+    rename("Accounting period" = Year)
+})
 
-uraq_002_nat <- soaa_res_processed %>%
-                select(year, DEGURBA, mean_soaa_pm25_ug_m3, total_soaa_m2) %>%
-                filter(DEGURBA == 1) %>%
-                group_by(year) %>%
-                summarise(w_mean_pm25_nat = round2(weighted.mean(mean_soaa_pm25_ug_m3, total_soaa_m2), 2),
-                          count_n = n(),
-                          se_pm25_nat = round2(sd(mean_soaa_pm25_ug_m3)/sqrt(count_n), 2)) %>%
-                mutate(ID = "URAQ 002")
-
-uraq_003_nat <- soaa_res_processed %>%
-                select(year, DEGURBA, mean_soaa_pm25_ug_m3, total_soaa_m2) %>%
-                filter(DEGURBA == 2) %>%
-                group_by(year) %>%
-                summarise(w_mean_pm25_nat = round2(weighted.mean(mean_soaa_pm25_ug_m3, total_soaa_m2), 2),
-                          count_n = n(),
-                          se_pm25_nat = round2(sd(mean_soaa_pm25_ug_m3)/sqrt(count_n), 2)) %>%
-                mutate(ID = "URAQ 003")
-
-uraq_004_nat <- soaa_res_processed %>%
-                select(year, DEGURBA, mean_soaa_pm25_ug_m3, total_soaa_m2) %>%
-                filter(DEGURBA == 3) %>%
-                group_by(year) %>%
-                summarise(w_mean_pm25_nat = round2(weighted.mean(mean_soaa_pm25_ug_m3, total_soaa_m2), 2),
-                          count_n = n(),
-                          se_pm25_nat = round2(sd(mean_soaa_pm25_ug_m3)/sqrt(count_n), 2)) %>%
-                mutate(ID = "URAQ 004")
-
-uraq_005_nat <- soaa_res_processed %>%
-                select(year, mean_soaa_pm25_ug_m3, total_soaa_m2) %>%
-                group_by(year) %>%
-                summarise(w_mean_pm25_nat = round2(weighted.mean(mean_soaa_pm25_ug_m3, total_soaa_m2), 2),
-                          count_n = n(),
-                          se_pm25_nat = round2(sd(mean_soaa_pm25_ug_m3)/sqrt(count_n), 2)) %>%
-                mutate(ID = "URAQ 005")
-
-res_national <- bind_rows(uraq_001_nat,
-                          uraq_002_nat,
-                          uraq_003_nat,
-                          uraq_004_nat,
-                          uraq_005_nat) %>%
-                mutate(Indicator = "Urban Air Quality",
-                       Accounting_area = "Norway") %>%
-                select(Indicator, ID, Accounting_area, year, w_mean_pm25_nat, se_pm25_nat)
-
-colnames(res_national) <- c("Indicator",
-                            "ID",
-                            "Accounting area",
-                            "Accounting period",
-                            "Average PM2.5 concentration µg/m3",
-                            "Standard error (µg/m3)")
+# Merge all table stogether
+res_national <- bind_rows(nat_tbl_list)
+res_national$`Average PM2.5 concentration µg/m3` <- round2(res_national$`Average PM2.5 concentration µg/m3`, digits = 2)
 
 datatable(res_national, filter = "top")
 ```
