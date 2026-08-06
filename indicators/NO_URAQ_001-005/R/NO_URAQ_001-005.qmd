@@ -1044,7 +1044,7 @@ From the summary table that we exported previously, we create a summary table wi
 Below, we present two kinds of summary table: one national, and one presenting a breakdown by municipalities. 
 
 ### National Results
-**Warning: uncertainties around the indicators are not presented. Due to data limitations, indicators might be slightly underestimated**
+**Warning: uncertainties around the indicators are not presented. Data points missing in the original data had to be removed from the estimations below.**
 ```{r}
 #| eval: true
 #| code-summary: "National summary table"
@@ -1087,7 +1087,7 @@ datatable(res_national, filter = "top")
 ```
 
 ### Municipality level
-**Warning: uncertainties around the indicators are not presented. Due to data limitations, indicators might be slightly underestimated** Note that URAQ_005 is not reported here as this indicator is only for national level. An area-weighted mean of URAQ_002 to URAQ_004 would sum to URAQ_005.
+**Warning: uncertainties around the indicators are not presented. Data points missing in the original data had to be removed from the estimations below.** Note that URAQ_005 is not reported here as this indicator is only for national level. An area-weighted mean of URAQ_002 to URAQ_004 would sum to URAQ_005.
 ```{r}
 #| eval: true
 #| message : false
