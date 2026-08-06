@@ -405,24 +405,78 @@ conn_ug <- ddbs_create_conn(dbdir = "tempdir", threads = 10, memory_limit_gb = 3
 
 ```
 
-### 7.1 
+### 7.1 Copernicus IMD
+We have nine rasters to load, we first create a list of files before reading them and storing them in a list object. The only cleaning step was to create a virtual raster. We did not apply any mask for Norway on the IMD data as the use of the `exact_extract()` function will restrict the urban green indicators to the polygons terrestrial urban ecosystems or terretsrial LAUs boundaries.
+
+```{r}
+#| eval: false
+#| code-summary: "Load Copernicus IMD"
+
+# Path to the Copernicus IMD data
+path_imd <- "/data/P-Prosjekter2/412413_2023_no_egd/git_data/IMD_Copernicus"
+path_imd_list <- dir(path_imd, recursive = FALSE, full.names = TRUE)
+yrs_imd <- str_sub(path_imd_list, start = -4)
+file_imd <- map_vec(seq_along(path_imd_list), function(i){paste0(path_imd_list[i], "/IMD_", yrs_imd[i], ".vrt")})
 
 
+# Read virtual rasters
+imd_data <- map(file_imd, ~rast(.x))
+names(imd_data) <- yrs_imd
+
+## Clean the R environment
+rm(list = setdiff(ls(), 
+                  c("pull",
+                    "conn_ug",
+                    "imd_data")))
+
+```
+
+
+### 7.2 7.2 Grunnkart (D-2)
+D-2 is stored in the temporary duckdb database. We create one table for ET01 (Settlements and other artificial areas), and one for the other ecosystem types (ETs), excluding ET12 (Marine ecosystems) as they are excluded from Eurostat's definition of URGR_005.
+
+```{r}
+#| eval: false
+#| code-summary: "Load Grunnkart"
+
+# Path to GK
+gk_path <- "/data/P-Prosjekter2/412413_2023_no_egd/git_data/GK_processed/GK_final_UTM33.gpkg"
+
+# Store in duckdb database
+dbExecute(conn_pm, 
+sprintf("
+  CREATE TABLE '%s' AS
+  SELECT * 
+  FROM ST_Read('%s', layer = '%s')
+", 
+gk_path, "Settlements and other artificial areas"))
+
+dbExecute(conn_pm, 
+sprintf("
+  CREATE TABLE '%s' AS
+  SELECT * 
+  FROM ST_Read('%s', layer = '%s')
+", 
+gk_path, "Settlements and other artificial areas"))
+
+# Verify table is in my duckdb conn_pm database
+ddbs_list_tables(conn_pm)
+
+# Clean the R environment
+rm(list = setdiff(ls(), 
+                  c("pm25_data",
+                    "pull",
+                    "conn_pm")))
+```
 
 
 ## 8. Spatial units
-<!--# Describe the spatial units that you rely on in your analyses. Highlight the spatial units (the resolution) that the indicator values should be interpretted at. Potential spatial delineation data should eb introduced under 7.1. Datasets. We recomend using the SEEA EA terminology opf Basic Spatial Units (BSU), Ecosystem Asses (EA) and Ecosystem Accounting Area (EAA). -->
-
-The indicator values of URGR-001-004 can be interpreted at any spatial scale above the _characteristic scale_ of urban green areas which largely corresponds to the MMU for natural ecosystem types (any forests, lakes, etc below the MMU will be considered as parts of the urban ET, while the larger ones will be seen as non-urban natural ETs). So calculating URGR-001-004 for any planning and administrative unit above the quatier (bydel) level can generally be seen as meaningful. Nevertheless, coarser ecosystem accounting areas (EAA), like the *fylke*s or the *entire country* can also be highly relevant as reporting areas.  
+The indicator values of URGR-001-004 can be interpreted at any spatial scale above the _characteristic scale_ of urban green areas which largely corresponds to the MMU for natural ecosystem types (any forests, lakes, etc below the MMU will be considered as parts of the urban ET, while the larger ones will be seen as non-urban natural ETs). So calculating URGR_001-004 for any planning and administrative unit above the quatier (bydel) level can generally be seen as meaningful. Nevertheless, coarser ecosystem accounting areas (EAA), like the *fylke*s or the *entire country* can also be highly relevant as reporting areas.  
 
 For the variant URGR-005 the smallest interpretable reporting units are the entire metropolitan areas (the entire administrative area of specific groups of "cities and adjacent towns and suburbs").
 
 
 ## 9. Analyses
-<!--# Use this header for documenting the analyses. Put code in separate code chunks, and annotate the code in between using normal text (i.e. between the chunks, and try to avoid too many hashed out comments inside the code chunks). Add subheaders as needed. 
-Code folding is activated, meaning the code will be hidden by default in the html (one can click to expand it).
-Caching is also activated (from the top YAML), meaning that rendering to html will be quicker the second time you do it. This will create a folder inside you project folder (called INDICATORID_cache). Sometimes caching created problems because some operations are not rerun when they should be rerun. Try deleting the cash folder and try again. -->
-
 ### 9.1 URGR_005
 #### 9.1.1 Preparation of the data
 We use the Grunnkart (**D-1b**) to define the urban green areas (*focal area*).  According to the @cond-gn-eurostat2025, all ecosystem types in the EU Ecosystem Types Typology with a green cover should be included. This means that, in the EU Ecosystem Typology, we only discard: 10. Marine inlets and transitional waters, 12. Marine Ecosystems, and 1. Settlements and Other Artificial areas except classes 1.4 Urban greenspace and 1.5.2 Cemeteries. Note that the new Grunnkart has several tiles and not all of them have the same projection.
