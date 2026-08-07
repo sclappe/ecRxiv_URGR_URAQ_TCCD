@@ -437,32 +437,128 @@ D-2 is stored in the temporary duckdb database. We create one table for ET01 (Se
 
 The cleaning process of the Grunnkart included several steps: (i) correction of geometry; (ii) union of the polygons per ecosystem type at level 1 of the EU typology; (iii) BALINT.
 
-To facilitate analyses in block processes afterwards, we create one table per fylke.
+To facilitate analyses in block processes afterwards, we create one table per fylke in the duckdb database. We add a step of re-projection to the CRS from Copernicus IMD to facilitate the data analyses later on. We make the geometry valid after transformation and clean the duckdb database of the original data.
 
 ```{r}
 #| eval: false
 #| code-summary: "Load Grunnkart - not ET01"
 
 # Path to GK
-
 gk_path <- "/data/P-Prosjekter2/412413_2023_no_egd/git_data/GK_processed/fylke_level"
-gk_33_list <- dir(gk_path, pattern = "UTM33",recursive = FALSE, full.names = TRUE)
+gk_list <- dir(gk_path, pattern = "UTM33",recursive = FALSE, full.names = TRUE)
 
 # Store in duckdb database
-walk(gk_33_list, function(x){
+walk(gk_list, function(x){
   
   dbExecute(conn_ug, 
       sprintf("
         CREATE TABLE '%s' AS
-        SELECT * 
+        SELECT okosystemtype_1, geom
         FROM ST_Read('%s')
         WHERE okosystemtype_1 IS DISTINCT FROM 'Settlements and other artificial areas'
       ", 
-paste0("gk_33_", str_extract(x, "(?<=UTM33_).{2}")),
+paste0("gk_", str_extract(x, "(?<=UTM33_).{2}")),
 x))
   
 })
 
+# Verify tables are in my duckdb conn_pm database
+ddbs_list_tables(conn_ug)
+
+# Transform into IMD CRS
+tbl_list <- dbListTables(conn_ug)
+                   
+imd_crs <- st_crs(imd_data[[1]])
+
+walk(tbl_list, function(tbl){
+  
+# transform  
+ddbs_transform(tbl, imd_crs, conn = conn_ug) %>% 
+
+    # make valid
+    ddbs_make_valid(conn = conn_ug, name = paste0("cln_gk_not_et01", str_extract(tbl, "(?<=gk_).{2}")), overwrite = TRUE)
+  
+})
+
+# Check validity
+tables <- dbListTables(conn_ug) %>%
+            keep(~ startsWith(.x, "cln_gk_not"))
+
+for(tbl in tables){
+  
+  message("Processing: ", tbl)
+  
+  # Checks
+  valid_check <- ddbs_is_valid(tbl, conn = conn_ug) %>%
+                    filter(!is_valid) %>%
+                    ddbs_collect() %>%
+                    dim()
+
+  empty_check <- ddbs_is_empty(tbl, conn = conn_ug) %>%
+                    filter(is_empty == TRUE) %>%
+                    ddbs_collect() %>%
+                    dim()
+
+  simple_check <- ddbs_is_simple(tbl, conn = conn_ug) %>%
+                    filter(!is_simple) %>%
+                    ddbs_collect() %>%
+                    dim()
+  
+  # Print - should all have 0 rows
+  print(valid_check)
+  print(empty_check)
+  print(simple_check)
+
+  
+}
+
+# # Write the intermidaite product in case of crash
+# path_gpkg <- paste0(str_remove(tempdir(), "Rtmp\\w*"), "URGR_tmp_layers/GK_not_et01_3035_")
+# tables <- grep('^cln_gk_', dbListTables(conn_ug), value = TRUE)
+# 
+# walk(tables, function(x){
+#   
+#   as_duckspatial_df(x, conn = conn_ug) %>%
+#   ddbs_collect() %>%
+#   st_write(paste0(path_gpkg, str_extract(x, "(?<=cln_gk_33_).{2}"), ".gpkg"))
+# })
+
+# Read intermediate layer (if necessary)
+# path_gpkg <- paste0(str_remove(tempdir(), "Rtmp\\w*"), "URGR_tmp_layers")
+# gk_list <- dir(path_gpkg, recursive = FALSE, full.names = TRUE)
+# 
+# walk(gk_list, function(tbl) {
+# 
+#   ddbs_data <- ddbs_open_dataset(tbl, conn = conn_ug)
+# 
+#   ddbs_write_table(data = ddbs_data,
+#                    conn = conn_ug,
+#                    name = paste0("cln_gk_not_et01_", str_extract(tbl, "(?<=3035_).{2}")),
+#                    overwrite = TRUE)
+# 
+#   message("Wrote layer: ", tbl)
+# })
+
+# Clean duckdb database
+tables <- dbListTables(conn_ug)
+
+tbl_list <- keep(tables, startsWith(tables, "cln_gk_not"))
+
+tables <- tables[!tables %in% tbl_list]
+
+for (tbl in tables) {
+
+  if(substr(tbl, 1, 9) == "temp_view"){
+
+    dbExecute(conn_ug, sprintf("DROP VIEW IF EXISTS %s", dbQuoteIdentifier(conn_ug, tbl)))
+
+  }else{
+
+    dbExecute(conn_ug, sprintf("DROP TABLE IF EXISTS %s", dbQuoteIdentifier(conn_ug, tbl)))
+
+  }
+
+}
 
 # Verify tables are in my duckdb conn_pm database
 ddbs_list_tables(conn_ug)
@@ -471,30 +567,130 @@ ddbs_list_tables(conn_ug)
 rm(list = setdiff(ls(), 
                   c("imd_data",
                     "pull",
-                    "conn_ug",
-                    "gk_path",
-                    "gk_33_list")))
+                    "conn_ug")))
 ```
 
 ```{r}
 #| eval: false
 #| code-summary: "Load Grunnkart - ET01"
 
+# Path
+gk_path <- "/data/P-Prosjekter2/412413_2023_no_egd/git_data/GK_processed/fylke_level"
+gk_list <- dir(gk_path, pattern = "UTM33",recursive = FALSE, full.names = TRUE)
+
+
 # Store in duckdb database
-walk(gk_33_list, function(x){
+walk(gk_list, function(x){
   
   dbExecute(conn_ug, 
       sprintf("
         CREATE TABLE '%s' AS
-        SELECT * 
+        SELECT okosystemtype_1, geom
         FROM ST_Read('%s')
-        WHERE okosystemtype_1 == 'Settlements and other artificial areas'
+        WHERE okosystemtype_1 = 'Settlements and other artificial areas'
       ", 
-paste0("gk_et01_33_", str_extract(x, "(?<=UTM33_).{2}")),
+paste0("gk_et01_", str_extract(x, "(?<=UTM33_).{2}")),
 x))
   
 })
 
+# Verify tables are in my duckdb conn_pm database
+ddbs_list_tables(conn_ug)
+
+# Transform into IMD CRS
+tables <- dbListTables(conn_ug)
+tbl_list <- keep(tables, startsWith(tables, "gk_et01"))
+                   
+imd_crs <- st_crs(imd_data[[1]])
+
+walk(tbl_list, function(tbl){
+  
+# transform  
+ddbs_transform(tbl, imd_crs, conn = conn_ug) %>% 
+
+    # make valid
+    ddbs_make_valid(conn = conn_ug, name = paste0("cln_", tbl), overwrite = TRUE)
+  
+})
+
+# Check validity
+tables <- dbListTables(conn_ug) %>%
+            keep(~ startsWith(.x, "cln_gk_et01"))
+
+for(tbl in tables){
+  
+  message("Processing: ", tbl)
+  
+  # Checks
+  valid_check <- ddbs_is_valid(tbl, conn = conn_ug) %>%
+                    filter(!is_valid) %>%
+                    ddbs_collect() %>%
+                    dim()
+
+  empty_check <- ddbs_is_empty(tbl, conn = conn_ug) %>%
+                    filter(is_empty == TRUE) %>%
+                    ddbs_collect() %>%
+                    dim()
+
+  simple_check <- ddbs_is_simple(tbl, conn = conn_ug) %>%
+                    filter(!is_simple) %>%
+                    ddbs_collect() %>%
+                    dim()
+  
+  # Print - should all have 0 rows
+  print(valid_check)
+  print(empty_check)
+  print(simple_check)
+
+  
+}
+
+# # Write the intermediate product in case of crash
+# path_gpkg <- paste0(str_remove(tempdir(), "Rtmp\\w*"), "URGR_tmp_layers/GK_et01_3035_")
+# tables <- grep('^cln_gk_et', dbListTables(conn_ug), value = TRUE)
+# 
+# walk(tables, function(x){
+# 
+#   as_duckspatial_df(x, conn = conn_ug) %>%
+#   ddbs_collect() %>%
+#   st_write(paste0(path_gpkg, str_extract(x, "(?<=et01_).{2}"), ".gpkg"))
+# })
+# 
+# # Read intermediate layer (if necessary)
+# path_gpkg <- paste0(str_remove(tempdir(), "Rtmp\\w*"), "URGR_tmp_layers")
+# gk_list <- dir(path_gpkg, recursive = FALSE, pattern = "GK_et01", full.names = TRUE)
+# 
+# walk(gk_list, function(tbl) {
+# 
+#   ddbs_data <- ddbs_open_dataset(tbl, conn = conn_ug)
+# 
+#   ddbs_write_table(data = ddbs_data,
+#                    conn = conn_ug,
+#                    name = paste0("cln_gk_et01_", str_extract(tbl, "(?<=3035_).{2}")),
+#                    overwrite = TRUE)
+# 
+#   message("Wrote layer: ", tbl)
+# })
+
+
+# Clean duckdb database of the raw tables
+tables <- dbListTables(conn_ug) 
+              
+tables <- tables[!tables %in% keep(tables, startsWith(tables, "cln_"))]
+
+for (tbl in tables) {
+
+  if(substr(tbl, 1, 9) == "temp_view"){
+
+    dbExecute(conn_ug, sprintf("DROP VIEW IF EXISTS %s", dbQuoteIdentifier(conn_ug, tbl)))
+
+  }else{
+
+    dbExecute(conn_ug, sprintf("DROP TABLE IF EXISTS %s", dbQuoteIdentifier(conn_ug, tbl)))
+
+  }
+
+}
 
 # Verify tables are in my duckdb conn_pm database
 ddbs_list_tables(conn_ug)
@@ -507,26 +703,124 @@ rm(list = setdiff(ls(),
 ```
 
 The last thing we need to do is to load subtypes 1.4 Urban greenspace and 1.5.2 Cemeteries from the Grunnkart. For this, we kept an intermediary product from the cleaning process we did on the Grunnkart. This intermediary layer is the Grunnkart whose geometry has been corrected but the ETs has not yet been merged at level 1.
-#####I STOPPED HERE
+
 ```{r}
 #| eval: false
-#| code-summary: "Load Grunnkart - ET01"
+#| code-summary: "Load Grunnkart - Cemeteries and Urban greenspaces"
 
-# Store in duckdb database
-walk(gk_33_list, function(x){
+# list the files
+gdb_folder <- "/data/R/GeoSpatialData/LandUse/Norway_Arealregnskap/Original/GrunnkartArealregnskap FGDB-format"
+
+gdb_files <- list.files(gdb_folder, pattern = "_gdb\\.gdb$", 
+                        full.names = TRUE)
+
+# SQL query to read and select only urban cemeteries and greenspaces
+walk(gdb_files, function(x){
   
   dbExecute(conn_ug, 
       sprintf("
         CREATE TABLE '%s' AS
-        SELECT * 
+        WITH src_data AS (
+        SELECT okosystemtype_2, okosystemtype_3, geo
         FROM ST_Read('%s')
-        WHERE okosystemtype_1 == 'Settlements and other artificial areas'
+      )
+        SELECT okosystemtype_2 AS okosystemtype_1, geo
+        FROM src_data
+        WHERE okosystemtype_2 = 'Urban greenspace' 
+        
+        UNION ALL
+        
+        SELECT okosystemtype_3 AS okosystemtype_1, geo
+        FROM src_data
+        WHERE okosystemtype_3 = 'Cemeteries'
       ", 
-paste0("gk_et01_33_", str_extract(x, "(?<=UTM33_).{2}")),
+      
+paste0("gk_urb_green_features_", str_extract(x, "(?<=format/).{2}")),
 x))
   
 })
 
+# Project to IMD CRS, Clean slivers, make valid, union
+tbl_list <- paste0("gk_urb_green_features_", str_extract(gdb_files, "(?<=format/).{2}"))
+                   
+imd_crs <- st_crs(imd_data[[1]])
+
+walk(tbl_list, function(tbl){
+  
+# transform  
+ddbs_transform(tbl, imd_crs, conn = conn_ug) %>% 
+
+    # remove slivers
+    ddbs_area(new_column = "area_m2_proj") %>% 
+        filter(area_m2_proj > 0.05) %>%
+    
+    # make valid
+    ddbs_make_valid() %>% 
+    
+    # decompose complex geometry types into individual types
+    ddbs_dump() %>% 
+    
+    # union
+    ddbs_union_agg(by = "okosystemtype_1") %>% 
+    
+    # make valid
+    ddbs_make_valid() %>% 
+    
+    # decompose and write in duckdb database
+    ddbs_dump(conn = conn_ug, name = paste0("cln_", tbl), overwrite = TRUE) 
+  
+})
+
+# Check validity
+tables <- dbListTables(conn_ug) %>%
+            keep(~ startsWith(.x, "cln_gk_urb"))
+
+for(tbl in tables){
+  
+  message("Processing: ", tbl)
+  
+  # Checks
+  valid_check <- ddbs_is_valid(tbl, conn = conn_ug) %>%
+                    filter(!is_valid) %>%
+                    ddbs_collect() %>%
+                    dim()
+
+  empty_check <- ddbs_is_empty(tbl, conn = conn_ug) %>%
+                    filter(is_empty == TRUE) %>%
+                    ddbs_collect() %>%
+                    dim()
+
+  simple_check <- ddbs_is_simple(tbl, conn = conn_ug) %>%
+                    filter(!is_simple) %>%
+                    ddbs_collect() %>%
+                    dim()
+  
+  # Print - should all have 0 rows
+  print(valid_check)
+  print(empty_check)
+  print(simple_check)
+
+  
+}
+
+# Clean duckdb database of the raw tables
+tables <- dbListTables(conn_ug)
+
+tables <- tables[!tables %in% keep(tables, startsWith(tables, "cln_"))]
+
+for (tbl in tables) {
+
+  if(substr(tbl, 1, 9) == "temp_view"){
+
+    dbExecute(conn_ug, sprintf("DROP VIEW IF EXISTS %s", dbQuoteIdentifier(conn_ug, tbl)))
+
+  }else{
+
+    dbExecute(conn_ug, sprintf("DROP TABLE IF EXISTS %s", dbQuoteIdentifier(conn_ug, tbl)))
+
+  }
+
+}
 
 # Verify tables are in my duckdb conn_pm database
 ddbs_list_tables(conn_ug)
@@ -536,6 +830,9 @@ rm(list = setdiff(ls(),
                   c("imd_data",
                     "pull",
                     "conn_ug")))
+
+# Close duckdb database
+ddbs_stop_conn(conn_ug)
 ```
 
 
