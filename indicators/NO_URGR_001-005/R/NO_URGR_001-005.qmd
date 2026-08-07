@@ -300,6 +300,8 @@ The original unit of Copernicus HRL imperviousness is percentages (the share of 
 |----|--|--------|
 | **Copernicus HRL IMD** | Yes | Available from the [EEA](https://land.copernicus.eu/en/products/high-resolution-layer-imperviousness)|
 | **Grunnkart**  | No, only upon request to [NIBIO](https://kartkatalog.geonorge.no/metadata/nasjonalt-grunnkart-for-arealanalyse-testversjon-2/28c28e3a-d88f-4a34-8c60-5efe6d56a44d) | We used testversion 0.2, description available in @strand2024 and @gk2 |
+|**Local Administrative Units**| Yes | Available from Eurostat plateform [Gisco](https://ec.europa.eu/eurostat/web/gisco/geodata/statistical-units/local-administrative-units) |
+|**DEGURBA**| Yes | Available from [Eurostat](https://ec.europa.eu/eurostat/web/nuts/local-administrative-units)
 
 
 ## 3. Indicator properties
@@ -835,6 +837,90 @@ rm(list = setdiff(ls(),
 ddbs_stop_conn(conn_ug)
 ```
 
+### 7.3 LAU (D-3) and DEGURBA (D-4)
+LAU data can be directly downloaded from Eurostat using the `giscoR` package. We download the data in temporary directory.
+
+```{r}
+#| eval: false
+#| code-summary: "Load LAU data"
+# Load administrative boundaries
+# Create a temporary directory to store the cache
+temp_dir <- tempdir()
+
+# Download the dataset
+lau_no <- gisco_get_lau(year = "2024",
+                        epsg = "3035",
+                        update_cache = TRUE,
+                        cache_dir = temp_dir,
+                        verbose = FALSE,
+                        country = "NO",
+                        gisco_id = NULL)
+# Clean LAU codes
+lau_no$GISCO_ID <- str_remove(lau_no$GISCO_ID, "NO_")
+
+
+```
+
+Now we load DEBURBA data and add it to `lau_no`.
+
+```{r}
+#| eval: false
+#| code-summary: "Add DEGURBA to LAU data"
+
+# Source function to add fylke number
+source(paste0(here::here(),"/indicators/NO_URGR_001-005/R/functions/add_fylke.R"))
+
+# Path to DEGURBA data
+path_degurba <- "/data/P-Prosjekter2/412413_2023_no_egd/git_data/Adminstrative_boundaries_NO/LAU_DEGURBA_Eurostat/EU-27-LAU-2024-NUTS-2024.xlsx"
+
+# Read excel file with Degurba variable and select Norway
+degurba_lau_no <- read_excel(path_degurba, sheet = "NO") %>%
+                    mutate(Fylke_nummer = add_fylke(., kommune_nummer = "LAU CODE")[[1]],
+                           Fylke_navn = add_fylke(., kommune_nummer = "LAU CODE")[[2]],)
+
+# Join lau_no with DEGURBA
+lau_dgurb <- inner_join(lau_no,
+                        degurba_lau_no,
+                        by = join_by("GISCO_ID" == "LAU CODE")) %>%
+              select(Fylke_nummer, Fylke_navn, GISCO_ID, LAU_NAME, DEGURBA, geometry) %>%
+              st_as_sf()
+
+# Re-project in the CRS of IMD data and store in duckdb database
+st_transform(lau_dgurb, crs = crs(imd_data[[1]])) %>%
+      ddbs_make_valid(conn = conn_ug,
+                      "cln_lau",
+                      overwrite = TRUE)
+ 
+# Check validity
+valid_check <- ddbs_is_valid("cln_lau",
+                              conn = conn_ug) %>%
+                 filter(!is_valid) %>%
+                 ddbs_collect() %>%
+                 dim()
+
+empty_check <- ddbs_is_empty("cln_lau",
+                             conn = conn_ug) %>%
+                  filter(is_empty == TRUE) %>%
+                  ddbs_collect() %>%
+                  dim()
+
+simple_check <- ddbs_is_simple("cln_lau",
+                               conn = conn_ug) %>%
+                  filter(!is_simple) %>% 
+                  ddbs_collect() %>%
+                  dim()
+
+
+# Verify table is in my duckdb conn_ug database
+ddbs_list_tables(conn_ug)
+
+## Clean the R environment
+rm(list = setdiff(ls(), 
+                  c("pm25_data",
+                    "pull",
+                    "conn_ug")))
+
+```
 
 ## 8. Spatial units
 The indicator values of URGR-001-004 can be interpreted at any spatial scale above the _characteristic scale_ of urban green areas which largely corresponds to the MMU for natural ecosystem types (any forests, lakes, etc below the MMU will be considered as parts of the urban ET, while the larger ones will be seen as non-urban natural ETs). So calculating URGR_001-004 for any planning and administrative unit above the quatier (bydel) level can generally be seen as meaningful. Nevertheless, coarser ecosystem accounting areas (EAA), like the *fylke*s or the *entire country* can also be highly relevant as reporting areas.  
