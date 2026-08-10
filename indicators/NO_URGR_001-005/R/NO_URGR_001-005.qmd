@@ -1161,7 +1161,7 @@ urgr_001_nat <- map(seq_along(lau_et01_imd), function(x){
                         bind_rows() %>%
                         filter(DEGURBA == 1) %>%
                         mutate(non_imp = 100 - mean) %>%
-                        summarise("Share of urban green/blue spaces (%)" = stats:::weighted.mean(non_imp, area_m2, na.rm = TRUE))}) 
+                        summarise("Share of urban green/blue spaces (%)" = round2(stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE), digitd = 2)))}) 
 
 urgr_001_nat <- urgr_001_nat %>%
                   bind_rows() %>%
@@ -1180,7 +1180,7 @@ urgr_001_mun <- map(seq_along(lau_et01_imd), function(x){
                           filter(DEGURBA == 1) %>%
                           mutate(non_imp = 100 - mean) %>%
                           group_by(LAU_NAME, GISCO_ID) %>%
-                          summarise("Share of urban green/blue spaces (%)" = stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE)) %>%
+                          summarise("Share of urban green/blue spaces (%)" = round2(stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE), digitd = 2)) %>%
                           relocate(LAU_NAME, .after = GISCO_ID) %>%
                           rename("Accounting area (municipality name)"= LAU_NAME,
                                  "Accounting area (municipality number)"= GISCO_ID) }) 
@@ -1214,7 +1214,7 @@ urgr_002_nat <- map(seq_along(lau_et01_imd), function(x){
                         bind_rows() %>%
                         filter(DEGURBA == 2) %>%
                         mutate(non_imp = 100 - mean) %>%
-                        summarise("Average share of non-impervious area (%)" = stats:::weighted.mean(non_imp, area_m2, na.rm = TRUE))}) 
+                        summarise("Share of urban green/blue spaces (%)" = round2(stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE), digitd = 2))}) 
 
 urgr_002_nat <- urgr_002_nat %>%
                   bind_rows() %>%
@@ -1233,7 +1233,7 @@ urgr_002_mun <- map(seq_along(lau_et01_imd), function(x){
                           filter(DEGURBA == 2) %>%
                           mutate(non_imp = 100 - mean) %>%
                           group_by(LAU_NAME, GISCO_ID) %>%
-                          summarise("Share of urban green/blue spaces (%)" = stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE)) %>%
+                          summarise("Share of urban green/blue spaces (%)" = round2(stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE), digitd = 2)) %>%
                           relocate(LAU_NAME, .after = GISCO_ID) %>%
                           rename("Accounting area (municipality name)"= LAU_NAME,
                                  "Accounting area (municipality number)"= GISCO_ID) }) 
@@ -1269,7 +1269,7 @@ urgr_003_nat <- map(seq_along(lau_et01_imd), function(x){
                         bind_rows() %>%
                         filter(DEGURBA == 3) %>%
                         mutate(non_imp = 100 - mean) %>%
-                        summarise("Share of urban green/blue spaces (%)" = stats:::weighted.mean(non_imp, area_m2, na.rm = TRUE))}) 
+                        summarise("Share of urban green/blue spaces (%)" = round2(stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE), digitd = 2))}) 
 
 urgr_003_nat <- urgr_003_nat %>%
                   bind_rows() %>%
@@ -1288,7 +1288,7 @@ urgr_003_mun <- map(seq_along(lau_et01_imd), function(x){
                           filter(DEGURBA == 3) %>%
                           mutate(non_imp = 100 - mean) %>%
                           group_by(LAU_NAME, GISCO_ID) %>%
-                          summarise("Share of urban green/blue spaces (%)" = stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE)) %>%
+                          summarise("Share of urban green/blue spaces (%)" = round2(stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE), digitd = 2))) %>%
                           relocate(LAU_NAME, .after = GISCO_ID) %>%
                           rename("Accounting area (municipality name)"= LAU_NAME,
                                  "Accounting area (municipality number)"= GISCO_ID) }) 
@@ -1325,7 +1325,7 @@ urgr_004_nat <- map(seq_along(lau_et01_imd), function(x){
                       lau_et01_imd[[x]] %>%
                       bind_rows() %>%
                       mutate(non_imp = 100 - mean) %>%
-                      summarise("Share of urban green/blue spaces (%)" = stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE))}) 
+                      summarise("Share of urban green/blue spaces (%)" = round2(stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE), digitd = 2))}) 
 
 urgr_004_nat <- urgr_004_nat %>%
                   bind_rows() %>%
@@ -1653,10 +1653,10 @@ lau_area <- as_duckspatial_df("lau_urgr5", conn = conn_ug) %>%
 
 
 ## URGR national level - area-weighted mean
-urgr_005_nat <-  data.frame(`Share of urban green areas` = "URGR_005",
+urgr_005_nat <-  data.frame(`Indicator` = "Urban green areas",
                             `ID` = "URGR_005",
                             `Accounting area` = "Norway",
-                            `Accounting period` = "2024", # We assume GK is from 2024
+                            `Accounting period` = 2024, # We assume GK is from 2024
                             `Share of urban green/blue spaces (%)` = round2(sum(urgr_005_data$area_m2)/sum(lau_area$area_m2)*100, digits = 2),
                             check.names = FALSE)
        
@@ -1665,7 +1665,16 @@ urgr_005_nat <-  data.frame(`Share of urban green areas` = "URGR_005",
 ddbs_stop_conn(conn_ug)
                   
 ## Clean the R environment
-rm(ls())
+rm(list = setdiff(ls(), 
+                  c("pull",
+                    "urgr_001_nat",
+                    "urgr_001_mun",
+                    "urgr_002_nat",
+                    "urgr_002_mun",
+                    "urgr_003_nat",
+                    "urgr_003_mun",
+                    "urgr_004_nat",
+                    "urgr_005_nat")))
 ```
 
 
@@ -1674,7 +1683,7 @@ rm(ls())
 This is typically where people will harvest data from, so make sure to include all relevant output here, but don't clutter this section with too much output either. -->
 
 ### National-level results
-These results are presented for all five variants (@tbl-national). For URGR_005 we could not calculate a reliable measure of uncertainty, hence marked as "Not available" below. The recommended variant for general use is URGR_004.
+
 
 ```{r tbl-national}
 #| eval: true
@@ -1682,70 +1691,49 @@ These results are presented for all five variants (@tbl-national). For URGR_005 
 #| code-summary: "Code to create a comparative URGR table"
 #| tbl-cap: 'Ecosystem condition variables NO_URGR from 1 to 5.'
 
-# Load the results files
+# Merge all tables
+res_national <- bind_rows(urgr_001_nat,
+                          urgr_002_nat,
+                          urgr_003_nat,
+                          urgr_004_nat,
+                          urgr_005_nat)
 
-# server path:
-# path_res <- "/data/P-Prosjekter2/412413_2023_no_egd/Results/URGR/"
-# repo path
-path_res <- here::here(
-  "indicators",
-  "NO_URGR_001-005",
-  "data")
 
-urgr001_004 <- read_csv(paste0(path_res, "/URGR_001-004_results-251009-2341.csv"))
+# Clean R environment
+rm(list = setdiff(ls(), 
+                  c("pull",
+                    "urgr_001_mun",
+                    "urgr_002_mun",
+                    "urgr_003_mun")))
 
-urgr005 <- read_excel(paste0(path_res, "/URGR_005_results-251009-2341.xlsx"))
-
-# National-level results
-res_national <- urgr001_004 %>%
-  filter(regn_nm == "Norway") %>%
-  select(indi, regn_nm, se_munic, sug) %>%
-  bind_rows(tibble(indi="URGR_005", regn_nm= "Norway", se_munic= NA,  
-                   sug=sum(urgr005$total_area_et_m2) / 
-                     sum(unique(urgr005$lau_area_m2)))) %>% #!!unique, because the LAU areas are repeated in this data frame 
-  mutate(Indicator= "Share of urban green areas", year= 2018) %>%
-  mutate(sug= round2(sug*100, 2), sd= round2(se_munic, 2)) %>%
-  mutate(ID = gsub("_", " ", .$indi)) %>%
-  select(Indicator, ID, 
-         `Accounting area`= regn_nm,
-         `Accounting period`= year, 
-         `Variable value (%)`= sug,
-         `Standard error (%)`= se_munic)
-
-res_national$`Standard error (%)` <- as.character(res_national$`Standard error (%)`) %>%
-                                        replace_na("Not available")
-
-datatable(res_national)
+# Show table
+datatable(res_national, filter = "top") %>%
+  formatRound(columns = "Share of urban green/blue spaces (%)", digits = 2)
 
 ```
 
-### Regional results
-At a regional level we can only show the results for URGR_001-004 (@tbl-regional). Many regions of Norway have zero or just one settlements classified as "cities" (`DEGURBA=1`). For these settlements URGR_001 (or its uncertainty) could not be quantified and are marked as "Not available". The recommended variant for general use is URGR_004.
+### Municipal results
+URGR_004 was not presented at municipal level as it corresponds to either URGR_001-2-3 depending on the degree of urbanisation the municipalit has been classified with by Eurostat.
 
 ```{r tbl-regional}
 #| eval: true
 #| warning: false
 #| code-summary: "Code to create a comparative URGR table"
-#| tbl-cap: 'Ecosystem condition variables NO_URGR from 1 to 4, divided into geographic regions.'
+#| tbl-cap: 'Ecosystem condition variables URGR from 1 to 3, divided into municipalities.'
+
+# Merge all tables
+res_municipal <- bind_rows(urgr_001_mun,
+                           urgr_002_mun,
+                           urgr_003_mun)
 
 
-res_regional <- urgr001_004 %>%
-  filter(regn_nm != "Norway") %>%
-  mutate(Indicator= "Share of urban green areas", year= 2018) %>%
-  mutate(sug= round2(sug*100, 2), sd= round2(se_munic, 2)) %>%
-  mutate(ID = gsub("_", " ", .$indi)) %>%
-  mutate(acc_area = gsub("_", " ", .$indi)) %>%
-  select(Indicator, ID, 
-         #`Accounting area`= acc_area,
-         `Region` = regn_nm,
-         `Accounting period`= year, 
-         `Variable value (%)`= sug,
-         `Standard error (%)`= se_munic)
+# Clean R environment
+rm(ls())
 
-res_regional$`Standard error (%)` <- as.character(res_regional$`Standard error (%)`) %>%
-                                        replace_na("Not available")
+# Show table
+datatable(res_municipal, filter = "top") %>%
+  formatRound(columns = "Share of urban green/blue spaces (%)", digits = 2)
 
-datatable(res_regional)
 
 ```
 
@@ -1761,12 +1749,12 @@ Code to export the result tables above.
 #| code-summary: "Code to export the result tables above"
 
 #CSV
-write.table(res_national, "URGR_NO_national_2018.csv")
-write.table(res_regional, "URGR_NO_regional_2018.csv")
+write.table(res_national, "URGR_NO_national_2018-2024.csv")
+write.table(res_municipal, "URGR_NO_regional_2018-2024.csv")
 
 #Excel
-write_xlsx(res_national, "URGR_NO_national_2018.xlsx")
-write_xlsx(res_regional, "URGR_NO_regional_2018.xlsx")
+write_xlsx(res_national, "URGR_NO_national_2018-2024.xlsx")
+write_xlsx(res_municipal, "URGR_NO_regional_2018-2024.xlsx")
 
 ```
 
