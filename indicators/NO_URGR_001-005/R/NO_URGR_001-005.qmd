@@ -1161,11 +1161,15 @@ urgr_001_nat <- map(seq_along(lau_et01_imd), function(x){
                         bind_rows() %>%
                         filter(DEGURBA == 1) %>%
                         mutate(non_imp = 100 - mean) %>%
-                        summarise("Average share of non-impervious area (%)" = stats:::weighted.mean(non_imp, area_m2, na.rm = TRUE))}) 
+                        summarise("Share of urban green/blue spaces (%)" = stats:::weighted.mean(non_imp, area_m2, na.rm = TRUE))}) 
 
 urgr_001_nat <- urgr_001_nat %>%
                   bind_rows() %>%
-                  mutate(Year = as.numeric(names(imd_data)))
+                  mutate(`Indicator` = "Urban green areas",
+                         ID = "URGR_001",
+                         `Accounting area` = "Norway",
+                         `Accounting period` = as.numeric(names(imd_data)),
+                         .before = `Share of urban green/blue spaces (%)`)
   
   
 
@@ -1176,14 +1180,18 @@ urgr_001_mun <- map(seq_along(lau_et01_imd), function(x){
                           filter(DEGURBA == 1) %>%
                           mutate(non_imp = 100 - mean) %>%
                           group_by(LAU_NAME, GISCO_ID) %>%
-                          summarise("Average share of non-impervious area (%)" = stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE)) %>%
+                          summarise("Share of urban green/blue spaces (%)" = stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE)) %>%
                           relocate(LAU_NAME, .after = GISCO_ID) %>%
                           rename("Accounting area (municipality name)"= LAU_NAME,
                                  "Accounting area (municipality number)"= GISCO_ID) }) 
   
-urgr_001_mun <- uraq_001_mun %>%
+urgr_001_mun <- urgr_001_mun %>%
                   bind_rows() %>%
-                  mutate(Year = as.numeric(names(imd_data)))
+                  mutate(`Indicator` = "Urban green areas",
+                         ID = "URGR_001",
+                         .before = `Accounting area (municipality number)`) %>%
+                  mutate(`Accounting period` = as.numeric(names(imd_data)),
+                         .before = `Share of urban green/blue spaces (%)`)
                   
 ## Clean the R environment
 rm(list = setdiff(ls(), 
@@ -1210,7 +1218,11 @@ urgr_002_nat <- map(seq_along(lau_et01_imd), function(x){
 
 urgr_002_nat <- urgr_002_nat %>%
                   bind_rows() %>%
-                  mutate(Year = as.numeric(names(imd_data)))
+                  mutate(`Indicator` = "Urban green areas",
+                         ID = "URGR_002",
+                         `Accounting area` = "Norway",
+                         `Accounting period` = as.numeric(names(imd_data)),
+                         .before = `Share of urban green/blue spaces (%)`)
   
   
 
@@ -1221,14 +1233,18 @@ urgr_002_mun <- map(seq_along(lau_et01_imd), function(x){
                           filter(DEGURBA == 2) %>%
                           mutate(non_imp = 100 - mean) %>%
                           group_by(LAU_NAME, GISCO_ID) %>%
-                          summarise("Average share of non-impervious area (%)" = stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE)) %>%
+                          summarise("Share of urban green/blue spaces (%)" = stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE)) %>%
                           relocate(LAU_NAME, .after = GISCO_ID) %>%
                           rename("Accounting area (municipality name)"= LAU_NAME,
                                  "Accounting area (municipality number)"= GISCO_ID) }) 
   
-urgr_002_mun <- uraq_002_mun %>%
+urgr_002_mun <- urgr_002_mun %>%
                   bind_rows() %>%
-                  mutate(Year = as.numeric(names(imd_data)))
+                  mutate(`Indicator` = "Urban green areas",
+                         ID = "URGR_002",
+                         .before = `Accounting area (municipality number)`) %>%
+                  mutate(`Accounting period` = as.numeric(names(imd_data)),
+                         .before = `Share of urban green/blue spaces (%)`)
                   
 ## Clean the R environment
 rm(list = setdiff(ls(), 
@@ -1253,11 +1269,15 @@ urgr_003_nat <- map(seq_along(lau_et01_imd), function(x){
                         bind_rows() %>%
                         filter(DEGURBA == 3) %>%
                         mutate(non_imp = 100 - mean) %>%
-                        summarise("Average share of non-impervious area (%)" = stats:::weighted.mean(non_imp, area_m2, na.rm = TRUE))}) 
+                        summarise("Share of urban green/blue spaces (%)" = stats:::weighted.mean(non_imp, area_m2, na.rm = TRUE))}) 
 
 urgr_003_nat <- urgr_003_nat %>%
                   bind_rows() %>%
-                  mutate(Year = as.numeric(names(imd_data)))
+                  mutate(`Indicator` = "Urban green areas",
+                         ID = "URGR_003",
+                         `Accounting area` = "Norway",
+                         `Accounting period` = as.numeric(names(imd_data)),
+                         .before = `Share of urban green/blue spaces (%)`)
   
   
 
@@ -1268,14 +1288,18 @@ urgr_003_mun <- map(seq_along(lau_et01_imd), function(x){
                           filter(DEGURBA == 3) %>%
                           mutate(non_imp = 100 - mean) %>%
                           group_by(LAU_NAME, GISCO_ID) %>%
-                          summarise("Average share of non-impervious area (%)" = stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE)) %>%
+                          summarise("Share of urban green/blue spaces (%)" = stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE)) %>%
                           relocate(LAU_NAME, .after = GISCO_ID) %>%
                           rename("Accounting area (municipality name)"= LAU_NAME,
                                  "Accounting area (municipality number)"= GISCO_ID) }) 
   
-urgr_003_mun <- uraq_003_mun %>%
+urgr_003_mun <- urgr_003_mun %>%
                   bind_rows() %>%
-                  mutate(Year = as.numeric(names(imd_data)))
+                  mutate(`Indicator` = "Urban green areas",
+                         ID = "URGR_003",
+                         .before = `Accounting area (municipality number)`) %>%
+                  mutate(`Accounting period` = as.numeric(names(imd_data)),
+                         .before = `Share of urban green/blue spaces (%)`)
                   
 ## Clean the R environment
 rm(list = setdiff(ls(), 
@@ -1301,11 +1325,15 @@ urgr_004_nat <- map(seq_along(lau_et01_imd), function(x){
                       lau_et01_imd[[x]] %>%
                       bind_rows() %>%
                       mutate(non_imp = 100 - mean) %>%
-                      summarise("Average share of non-impervious area (%)" = stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE))}) 
+                      summarise("Share of urban green/blue spaces (%)" = stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE))}) 
 
 urgr_004_nat <- urgr_004_nat %>%
                   bind_rows() %>%
-                  mutate(Year = as.numeric(names(imd_data)))
+                  mutate(`Indicator` = "Urban green areas",
+                         ID = "URGR_004",
+                         `Accounting area` = "Norway",
+                         `Accounting period` = as.numeric(names(imd_data)),
+                         .before = `Share of urban green/blue spaces (%)`)
        
                   
 ## Clean the R environment
@@ -1326,192 +1354,320 @@ rm(list = setdiff(ls(),
 ```
 
 ### 9.2 URGR_005
+**Target area** = the LAU whose `DEGURBA` is `1`.
+**Target feature** = the area of any ecosystem with green cover.
+**Compilation process** = spatial intersection between **target area** and **target feature**. Compared with URGR_001-004, only one year is available as the Grunkart has only one iteration.
 
+We start by identifying the city LAUs (`DEGURBA = 1`) and their adjacent towns and suburb (`DEGURBA = 2`), Then we intersect them with the "green/blue cover ecosystems" that are not in ET01. We will do a separate spatial intersection for "small-grained" ecosystem of ET01 that should be considered as "green/blue cover ecosystems" (*i.e.,* Cemeteries and Urban green spaces).
 
-
-
-
-
-
-# Close duckdb database
-ddbs_stop_conn(conn_ug)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#### 9.1.3 Data analyses
-First we do an intersection of the ecosystem types with the LAUs. That will result in a layer containing only ecosystem types per LAU only.
 ```{r}
 #| eval: false
-#| code-summary: "Intersection ecosystem types with LAUs"
-#| 
-et_list_lau <- et_final %>%
-                  map(\(.) st_intersection(., lau_32))
+#| code-summary: "Identify cities and adjacent towns & suburbs"
 
-names(et_list_lau) <- names(et_final)
+## Select LAU with DEGURBA = 1 and the adjacent DEGURBA = 2
+
+# LAU 1
+lau_1 <- as_duckspatial_df("cln_lau", conn = conn_ug) %>%
+          filter(DEGURBA == 1) %>%
+          ddbs_collect()
+
+# LAU 2
+lau_2 <- as_duckspatial_df("cln_lau", conn = conn_ug) %>%
+          filter(DEGURBA == 2) %>%
+          ddbs_collect()
+
+# LAU 1  and adjacent LAU 2
+lau_2_adj_id <- st_touches(lau_1, lau_2) %>%
+                unlist() %>%
+                unique()
+
+lau_2_adj <- lau_2[lau_2_adj_id, ]
+
+lau_urgr5 <- rbind(lau_1, lau_2_adj) %>%
+                ddbs_write_table("lau_urgr5", conn = conn_ug)
+
+## Clean the R environment
+rm(list = setdiff(ls(), 
+                  c("pull",
+                    "conn_ug",
+                    "imd_data",
+                    "lau_et01_all",
+                    "lau_et01_imd",
+                    "urgr_001_nat",
+                    "urgr_001_mun",
+                    "urgr_002_nat",
+                    "urgr_002_mun",
+                    "urgr_003_nat",
+                    "urgr_003_mun",
+                    "urgr_004_nat")))
 
 ```
 
-Then, we need to calculate the areas of each ecosystem type within the LAUs and the total area of each LAUs.
 ```{r}
 #| eval: false
-#| code-summary: "Total area of ecosystem types per LAUs"
-#| 
-# Calculate areas of ETs in LAUs
-et_lau_area <- et_list_lau %>%
-                map(\(.) mutate(., et_area_m2  = st_area(.)))
+#| code-summary: "Spatial intersection LAU and non-ET01 ecosystem types"
 
-names(et_lau_area) <- names(et_list_lau)
+## Intersect ET01 with LAUs - block processing to avoid memory issues
 
-# Calculate areas of LAUs
-lau_total_area <- lau_32 %>%
-                    mutate(., lau_area_m2 = unclass(st_area(.))) %>%
-                    st_drop_geometry() %>%
-                    select(LAU_ID, lau_area_m2)
+# Block intersections
+fylke_nb <- dbGetQuery(conn_ug, "SELECT DISTINCT Fylke_nummer FROM lau_urgr5") %>%
+              unname() %>%
+              unlist()
+
+walk(seq_along(fylke_nb), function(i){
+
+  # Input data  
+  et <- as_duckspatial_df(paste0("cln_gk_not_et01_", fylke_nb[i]), conn = conn_ug) 
+  
+  lau <- as_duckspatial_df("lau_urgr5", conn = conn_ug) %>%
+          filter(Fylke_nummer == !!fylke_nb[i])
+
+  
+  # Intersection
+  ddbs_intersection(lau,
+                    et,
+                    conn = conn_ug,
+                    conn_x = conn_ug,
+                    conn_y = conn_ug) %>% 
+    
+    ddbs_make_valid() %>%
+    
+    # Need to remove linestrings and geometrycollection for extact_extract
+    mutate(geometry = ST_CollectionExtract(geometry, 3L)) %>% # clean up geometrycollections
+    filter(!ST_IsEmpty(geometry)) %>% # remove empty geometry resulting from the step above
+    filter(ddbs_geometry_type(geometry) %in% c("POLYGON", "MULTIPOLYGON")) %>% # keep only polygons and multipolygons
+    
+    ddbs_area(new_column = "area_m2", name = paste0("lau_urgr5_not_et01_", fylke_nb[i]), conn = conn_ug, overwrite = TRUE)
+  
+})
+
+# Verify table is in my duckdb conn_pm database
+ddbs_list_tables(conn_ug)
+
+## Check valididty
+tables <- dbListTables(conn_ug) %>%
+            keep(~ startsWith(.x, "lau_urgr5_"))
+
+for(tbl in tables){
+  
+  message("Processing: ", tbl)
+  
+  # Checks
+  valid_check <- ddbs_is_valid(tbl, conn = conn_ug) %>%
+                    filter(!is_valid) %>%
+                    ddbs_collect() %>%
+                    dim()
+
+  empty_check <- ddbs_is_empty(tbl, conn = conn_ug) %>%
+                    filter(is_empty == TRUE) %>%
+                    ddbs_collect() %>%
+                    dim()
+
+  simple_check <- ddbs_is_simple(tbl, conn = conn_ug) %>%
+                    filter(!is_simple) %>%
+                    ddbs_collect() %>%
+                    dim()
+  
+  # Print - should all have 0 rows
+  print(valid_check)
+  print(empty_check)
+  print(simple_check)
+
+  
+}
+
+
+## Clean duckdb database
+tables <- dbListTables(conn_ug)
+
+tables <- keep(tables, startsWith(tables, "temp"))
+
+for (tbl in tables) {
+
+  if(substr(tbl, 1, 9) == "temp_view"){
+
+    dbExecute(conn_ug, sprintf("DROP VIEW IF EXISTS %s", dbQuoteIdentifier(conn_ug, tbl)))
+
+  }else{
+
+    dbExecute(conn_ug, sprintf("DROP TABLE IF EXISTS %s", dbQuoteIdentifier(conn_ug, tbl)))
+
+  }
+
+}
+
+
+## Clean the R environment
+rm(list = setdiff(ls(), 
+                  c("pull",
+                    "conn_ug",
+                    "imd_data",
+                    "lau_et01_all",
+                    "lau_et01_imd",
+                    "urgr_001_nat",
+                    "urgr_001_mun",
+                    "urgr_002_nat",
+                    "urgr_002_mun",
+                    "urgr_003_nat",
+                    "urgr_003_mun",
+                    "urgr_004_nat")))
+
 ```
 
-We also group the LAUs into the four "metropolitan areas" (referred to as "city group" below): Trondheim, Oslo, Stavanger, and Bergen. And we calculate the total area of each group.
 ```{r}
 #| eval: false
-#| code-summary: "Group LAUs into four clusters"
+#| code-summary: "Spatial intersection LAU and green/blue ET01 ecosystem types"
 
-# Calculate area per "city group"
-city_group_names <- c("Trondheim", "Oslo", "Stavanger", "Bergen")
-city_group_area <- lau_32 %>%
-                      mutate(., grp_area_m2 = unclass(st_area(.))) %>%
-                      st_drop_geometry() %>%
-                      select(cty_grp, grp_area_m2) %>%
-                      group_by(cty_grp) %>%
-                      summarise(cty_grp_area = sum(grp_area_m2)) %>%
-                      cbind(., city_group_names)
+## Intersect ET01 with LAUs - block processing to avoid memory issues
+
+# Block intersections
+fylke_nb <- dbGetQuery(conn_ug, "SELECT DISTINCT Fylke_nummer FROM lau_urgr5") %>%
+              unname() %>%
+              unlist()
+
+walk(seq_along(fylke_nb), function(i){
+
+  # Input data  
+  et <- as_duckspatial_df(paste0("cln_gk_urb_green_features_", fylke_nb[i]), conn = conn_ug) 
+  
+  lau <- as_duckspatial_df("lau_urgr5", conn = conn_ug) %>%
+          filter(Fylke_nummer == !!fylke_nb[i])
+
+  
+  # Intersection
+  ddbs_intersection(lau,
+                    et,
+                    conn = conn_ug,
+                    conn_x = conn_ug,
+                    conn_y = conn_ug) %>% 
+    
+    ddbs_make_valid() %>%
+    
+    # Need to remove linestrings and geometrycollection for extact_extract
+    mutate(geometry = ST_CollectionExtract(geometry, 3L)) %>% # clean up geometrycollections
+    filter(!ST_IsEmpty(geometry)) %>% # remove empty geometry resulting from the step above
+    filter(ddbs_geometry_type(geometry) %in% c("POLYGON", "MULTIPOLYGON")) %>% # keep only polygons and multipolygons
+    
+    ddbs_area(new_column = "area_m2", name = paste0("lau_urgr5_et01_", fylke_nb[i]), conn = conn_ug, overwrite = TRUE)
+  
+})
+
+# Verify table is in my duckdb conn_pm database
+ddbs_list_tables(conn_ug)
+
+## Check valididty
+tables <- dbListTables(conn_ug) %>%
+            keep(~ startsWith(.x, "lau_urgr5_et01_"))
+
+for(tbl in tables){
+  
+  message("Processing: ", tbl)
+  
+  # Checks
+  valid_check <- ddbs_is_valid(tbl, conn = conn_ug) %>%
+                    filter(!is_valid) %>%
+                    ddbs_collect() %>%
+                    dim()
+
+  empty_check <- ddbs_is_empty(tbl, conn = conn_ug) %>%
+                    filter(is_empty == TRUE) %>%
+                    ddbs_collect() %>%
+                    dim()
+
+  simple_check <- ddbs_is_simple(tbl, conn = conn_ug) %>%
+                    filter(!is_simple) %>%
+                    ddbs_collect() %>%
+                    dim()
+  
+  # Print - should all have 0 rows
+  print(valid_check)
+  print(empty_check)
+  print(simple_check)
+
+  
+}
+
+
+## Clean duckdb database
+tables <- dbListTables(conn_ug)
+
+tables <- keep(tables, startsWith(tables, "temp"))
+
+for (tbl in tables) {
+
+  if(substr(tbl, 1, 9) == "temp_view"){
+
+    dbExecute(conn_ug, sprintf("DROP VIEW IF EXISTS %s", dbQuoteIdentifier(conn_ug, tbl)))
+
+  }else{
+
+    dbExecute(conn_ug, sprintf("DROP TABLE IF EXISTS %s", dbQuoteIdentifier(conn_ug, tbl)))
+
+  }
+
+}
+
+
+## Clean the R environment
+rm(list = setdiff(ls(), 
+                  c("pull",
+                    "conn_ug",
+                    "imd_data",
+                    "lau_et01_all",
+                    "lau_et01_imd",
+                    "urgr_001_nat",
+                    "urgr_001_mun",
+                    "urgr_002_nat",
+                    "urgr_002_mun",
+                    "urgr_003_nat",
+                    "urgr_003_mun",
+                    "urgr_004_nat")))
+
 ```
 
-Finally, we can calculate summary tables for URGR_005:
+Now we can compile URGR_005.
+
 ```{r}
 #| eval: false
-#| code-summary: "Create summary tables"
+#| code-summary: "Compile URGR_005"
 
-# Summary table detailed per LAUs
-URGR_005_tab <- et_lau_area %>%
-                  compact() %>%
-                  bind_rows() %>%
+## List of tables
+tables <- dbListTables(conn_ug)
+tables <- keep(tables, startsWith(tables, "lau_urgr5"))[-1]
+
+## Pull data together
+urgr_005_data <- map(tables,
+                     function(x){
+                       as_duckspatial_df(x, conn = conn_ug) %>%
+                       ddbs_collect()}) %>%
                   st_drop_geometry() %>%
-                  select(LAUNAMN, DEGURBA, LAU_ID, cty_grp,
-                         okosystemtype_1, okosystemtype_2,
-                         okosystemtype_3, okosystemtype_kode,
-                         et_area_m2) %>%
-                  group_by(cty_grp, LAU_ID, LAUNAMN, okosystemtype_1, okosystemtype_2, okosystemtype_3, okosystemtype_kode) %>%
-                  summarise(total_area_et_m2 = sum (et_area_m2)) %>%
-                  left_join(., lau_total_area, by = "LAU_ID")
+                  bind_rows()
 
-# Summary table aggregated per "city group"
-URGR_005_tab_city_gr <- URGR_010_tab %>%
-                          group_by(cty_grp, okosystemtype_1, okosystemtype_2, okosystemtype_3, okosystemtype_kode) %>%
-                          select(!lau_area_m2) %>%
-                          summarise(total_area_et_m2 = sum(total_area_et_m2)) %>%
-                          left_join(., city_group_area, by = "cty_grp")
 
-# Writing out into a csv for later reuse
-path_res <- "/data/P-Prosjekter2/412413_2023_no_egd/Results/URGR/"
-out1_flat %>% write_excel(str_c(path_res, "URGR_005_results-", format(Sys.time(), "%y%m%d-%H%M"), ".xlsx"))
-# files needed to create the result tables are mnually copied over to the repo and can be found under data/
+## Total area LAUs
+lau_area <- as_duckspatial_df("lau_urgr5", conn = conn_ug) %>%
+              ddbs_area("area_m2") %>%
+              ddbs_collect() %>%
+              st_drop_geometry() %>%
+              select(GISCO_ID, area_m2)
 
+
+## URGR national level - area-weighted mean
+urgr_005_nat <-  data.frame(`Share of urban green areas` = "URGR_005",
+                            `ID` = "URGR_005",
+                            `Accounting area` = "Norway",
+                            `Accounting period` = "2024", # We assume GK is from 2024
+                            `Share of urban green/blue spaces (%)` = round2(sum(urgr_005_data$area_m2)/sum(lau_area$area_m2)*100, digits = 2),
+                            check.names = FALSE)
+       
+
+## Close duckdb database
+ddbs_stop_conn(conn_ug)
+                  
+## Clean the R environment
+rm(ls())
 ```
 
-These table have been exported to the internal repository and will be used in the Results section to create an overall summary table comparing all URGR indicators.
-
-
-
-
-
-### 9.2 URGR_001-004
-#### 9.2.1 Load and prepare the data
-#### 9.2.3 Data analysis
-We link the SOAA polygons (urban areas, `clc18_soaa`) to municipalities (`munic`), and then we dissolve them, to have just a single multiring polygon within each municipality, corresponding to all of the settlements within its boundaries). Then we use `exact_extract()` to get the mean value of the Copernicus IMD pixels that overlap with these polygons. With the help of the polygons and the mean IMD values we then calculate the total "urban area" (all of ET01/SOAA in m^2^) and the "urban green area" (the non-impervious area within the urban area, m^2^) for each municipality.
-
-```{r}
-#| eval: false
-#| code-summary: "Calculate SOAA area and extract mean % imperviousness"
-
-# Intersection SOAA and municipality boundary, dissolving the different CLC codes into a single SOAA polygon per municipality
-munic_soaa <- st_intersection(clc18_soaa, munic) %>%
-  group_by(LAU_NAM, DEGURBA, fylk_nr, regn_nm, a_munic) %>%
-  summarize(geometry= st_union(geometry))  %>%
-  ungroup %>%
-  mutate(a_soaa= st_area(geometry)) %>%
-  relocate(geometry, .after = last_col())
-#TODO/TOCHK: we seem to lose some municipalities somehow (munic contains 357, munic_soaa just 341) 
-# --> setdiff(munic$LAU_NAM, munic_soaa$LAU_NAM)
-#  [1] "Vevelstad"       "Dønna"           "Rødøy"           "Beiarn"          "Bokn"            "Sande"          
-#  [7] "Modalen"         "Solund"          "Askvoll"         "Flatanger"       "Leka"            "Gratangen"      
-# [13] "Loppa"           "Unjárga/Nesseby" "Osen"            "Utsira"         
-
-
-# Calculate "urban green" (=non-impervious) areas per munic
-munic_soaa_imd <- munic_soaa %>%
-  # head(30) %>% # 10% subset for piloting
-  mutate(imd= exact_extract(imd_vrt, geometry, fun= c("mean"))) %>% # mean IMD for each polygon 
-  mutate(a_ug = a_soaa * (1-imd/100)) %>% # total urban green per polygon in m2
-  # relocate(geometry, .after = last_col())
-  st_drop_geometry()
-
-
-```
-
-Combining the total area of "urban" and "urban green" in each municipality, with their DEGURBA classification, we can calculate URGR_001-004 for each region of Norway. We use the standard error (SE) of the municipal mean indicator values to characterise the uncertainty of the regional values, which is a relatively simple and conservative approach (probably underestimating the real uncertainties). As there are very few municipalities in the "cities" category (`DEGURBA = 1`), the variable URGR_001 has only values three regions, in one of which no uncertainty could be estimated.
-
-```{r}
-#| eval: false
-#| code-summary: "Create summary tables"
-
-variants <- list(URGR_001="1", URGR_002="2", URGR_003="3", URGR_004=c("1","2","3"))
-out1 <- NULL
-
-for (ii in names(variants)) {
-  out1[[ii]] <- munic_soaa_imd %>%    # Calculate the national mean values first
-    filter(DEGURBA %in% variants[[ii]]) %>%
-    # group_by(1) %>%
-    summarise(regn_nm= "Norway",
-              a_soaa= sum(a_soaa), 
-              a_ug= sum(a_ug),
-              count_n= n(),
-              se_munic= sd(imd)/sqrt(count_n)) %>% # SE of the mean of the municipal means (TODO: replace with a better uncertainty metric)
-    mutate(sug= unclass(a_ug / a_soaa)) #share of urban green
-  out1[[ii]] <- munic_soaa_imd %>%    # calculate mean values for each region
-    filter(DEGURBA %in% variants[[ii]]) %>%
-    group_by(regn_nm) %>%
-    summarise(a_soaa= sum(a_soaa), 
-              a_ug= sum(a_ug),
-              count_n= n(),
-              se_munic= sd(imd)/sqrt(count_n)) %>% # SE of the mean of the municipal means
-    mutate(sug= unclass(a_ug / a_soaa)) %>% #share of urban green
-    rbind(out1[[ii]], .) #  append the regional mean values after the national means
-  } 
-
-out1_flat <- out1 %>%
-  imap(~mutate(.x, indi= .y)) %>%
-  list_rbind %>%
-  relocate(indi)
-
-# Writing out into a csv for later reuse
-path_res <- "/data/P-Prosjekter2/412413_2023_no_egd/Results/URGR/"
-out1_flat %>% write_excel_csv(str_c(path_res, "URGR_001-004_results-", format(Sys.time(), "%y%m%d-%H%M"), ".csv"))
-# files needed to create the result tables are manually copied over to the repo and can be found under data/
-```
-
-Note that, due to the computation time of the code in this document, we export the tables of results. This allows us to compute and display the results in section 10. Results, without having to run the whole code presented in this document. 
 
 ## 10. Results
 <!--# Repeat the final results here. Typically this is a map or table of indicator values.
