@@ -1155,13 +1155,13 @@ Now, we compile the four remaining URAQ indicators: URGR_001 to URGR_004. During
 #| eval: false
 #| code-summary: "Compile URGR_001"
 
-## URAQ national level - area-weighted mean
+## URGR national level - area-weighted mean
 urgr_001_nat <- map(seq_along(lau_et01_imd), function(x){
                       lau_et01_imd[[x]] %>%
                         bind_rows() %>%
                         filter(DEGURBA == 1) %>%
                         mutate(non_imp = 100 - mean) %>%
-                        summarise("Average non-impervious area" = stats:::weighted.mean(non_imp, area_m2, na.rm = TRUE))}) 
+                        summarise("Average share of non-impervious area (%)" = stats:::weighted.mean(non_imp, area_m2, na.rm = TRUE))}) 
 
 urgr_001_nat <- urgr_001_nat %>%
                   bind_rows() %>%
@@ -1169,14 +1169,14 @@ urgr_001_nat <- urgr_001_nat %>%
   
   
 
-## URAQ municipal level
+## URGR municipal level
 urgr_001_mun <- map(seq_along(lau_et01_imd), function(x){
                         lau_et01_imd[[x]] %>%
                           bind_rows() %>%
                           filter(DEGURBA == 1) %>%
                           mutate(non_imp = 100 - mean) %>%
                           group_by(LAU_NAME, GISCO_ID) %>%
-                          summarise("Average PM2.5 concentration µg/m3" = stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE)) %>%
+                          summarise("Average share of non-impervious area (%)" = stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE)) %>%
                           relocate(LAU_NAME, .after = GISCO_ID) %>%
                           rename("Accounting area (municipality name)"= LAU_NAME,
                                  "Accounting area (municipality number)"= GISCO_ID) }) 
@@ -1200,13 +1200,13 @@ rm(list = setdiff(ls(),
 #| eval: false
 #| code-summary: "Compile URGR_002"
 
-## URAQ national level - area-weighted mean
+## URGR national level - area-weighted mean
 urgr_002_nat <- map(seq_along(lau_et01_imd), function(x){
                       lau_et01_imd[[x]] %>%
                         bind_rows() %>%
                         filter(DEGURBA == 2) %>%
                         mutate(non_imp = 100 - mean) %>%
-                        summarise("Average non-impervious area" = stats:::weighted.mean(non_imp, area_m2, na.rm = TRUE))}) 
+                        summarise("Average share of non-impervious area (%)" = stats:::weighted.mean(non_imp, area_m2, na.rm = TRUE))}) 
 
 urgr_002_nat <- urgr_002_nat %>%
                   bind_rows() %>%
@@ -1214,14 +1214,14 @@ urgr_002_nat <- urgr_002_nat %>%
   
   
 
-## URAQ municipal level
+## URGR municipal level
 urgr_002_mun <- map(seq_along(lau_et01_imd), function(x){
                         lau_et01_imd[[x]] %>%
                           bind_rows() %>%
                           filter(DEGURBA == 2) %>%
                           mutate(non_imp = 100 - mean) %>%
                           group_by(LAU_NAME, GISCO_ID) %>%
-                          summarise("Average PM2.5 concentration µg/m3" = stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE)) %>%
+                          summarise("Average share of non-impervious area (%)" = stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE)) %>%
                           relocate(LAU_NAME, .after = GISCO_ID) %>%
                           rename("Accounting area (municipality name)"= LAU_NAME,
                                  "Accounting area (municipality number)"= GISCO_ID) }) 
@@ -1247,13 +1247,13 @@ rm(list = setdiff(ls(),
 #| eval: false
 #| code-summary: "Compile URGR_003"
 
-## URAQ national level - area-weighted mean
+## URGR national level - area-weighted mean
 urgr_003_nat <- map(seq_along(lau_et01_imd), function(x){
                       lau_et01_imd[[x]] %>%
                         bind_rows() %>%
                         filter(DEGURBA == 3) %>%
                         mutate(non_imp = 100 - mean) %>%
-                        summarise("Average non-impervious area" = stats:::weighted.mean(non_imp, area_m2, na.rm = TRUE))}) 
+                        summarise("Average share of non-impervious area (%)" = stats:::weighted.mean(non_imp, area_m2, na.rm = TRUE))}) 
 
 urgr_003_nat <- urgr_003_nat %>%
                   bind_rows() %>%
@@ -1261,14 +1261,14 @@ urgr_003_nat <- urgr_003_nat %>%
   
   
 
-## URAQ municipal level
+## URGR municipal level
 urgr_003_mun <- map(seq_along(lau_et01_imd), function(x){
                         lau_et01_imd[[x]] %>%
                           bind_rows() %>%
                           filter(DEGURBA == 3) %>%
                           mutate(non_imp = 100 - mean) %>%
                           group_by(LAU_NAME, GISCO_ID) %>%
-                          summarise("Average PM2.5 concentration µg/m3" = stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE)) %>%
+                          summarise("Average share of non-impervious area (%)" = stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE)) %>%
                           relocate(LAU_NAME, .after = GISCO_ID) %>%
                           rename("Accounting area (municipality name)"= LAU_NAME,
                                  "Accounting area (municipality number)"= GISCO_ID) }) 
@@ -1292,6 +1292,47 @@ rm(list = setdiff(ls(),
                     "urgr_003_mun")))
 ```
 
+```{r}
+#| eval: false
+#| code-summary: "Compile URGR_004"
+
+## URGR national level - area-weighted mean
+urgr_004_nat <- map(seq_along(lau_et01_imd), function(x){
+                      lau_et01_imd[[x]] %>%
+                      bind_rows() %>%
+                      mutate(non_imp = 100 - mean) %>%
+                      summarise("Average share of non-impervious area (%)" = stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE))}) 
+
+urgr_004_nat <- urgr_004_nat %>%
+                  bind_rows() %>%
+                  mutate(Year = as.numeric(names(imd_data)))
+       
+                  
+## Clean the R environment
+rm(list = setdiff(ls(), 
+                  c("pull",
+                    "conn_ug",
+                    "imd_data",
+                    "lau_et01_all",
+                    "lau_et01_imd",
+                    "urgr_001_nat",
+                    "urgr_001_mun",
+                    "urgr_002_nat",
+                    "urgr_002_mun",
+                    "urgr_003_nat",
+                    "urgr_003_mun",
+                    "urgr_004_nat",
+                    "urgr_004_mun")))
+```
+
+### 9.2 URGR_005
+
+
+
+
+
+
+
 # Close duckdb database
 ddbs_stop_conn(conn_ug)
 
@@ -1308,7 +1349,7 @@ ddbs_stop_conn(conn_ug)
 
 
 
-### 9.1 URGR_005
+
 
 #### 9.1.3 Data analyses
 First we do an intersection of the ecosystem types with the LAUs. That will result in a layer containing only ecosystem types per LAU only.
