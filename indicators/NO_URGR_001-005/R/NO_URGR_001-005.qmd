@@ -408,7 +408,7 @@ conn_ug <- ddbs_create_conn(dbdir = "tempdir", threads = 10, memory_limit_gb = 3
 ```
 
 ### 7.1 Copernicus IMD (D-1)
-We have nine rasters to load, we first create a list of files before reading them and storing them in a list object. The only cleaning step was to create a virtual raster. We did not apply any mask for Norway on the IMD data as the use of the `exact_extract()` function will restrict the urban green indicators to the polygons terrestrial urban ecosystems or terretsrial LAUs boundaries.
+We have three years and 159 rasters to load, we first create a list of files before reading them and storing them in a list object. The only cleaning step was to create a virtual raster. We did not apply any mask for Norway on the IMD data as the use of the `exact_extract()` function will restrict the urban green indicators to the polygons terrestrial urban ecosystems or terretsrial LAUs boundaries.
 
 ```{r}
 #| eval: false
@@ -419,11 +419,6 @@ path_imd <- "/data/P-Prosjekter2/412413_2023_no_egd/git_data/IMD_Copernicus"
 path_imd_list <- dir(path_imd, recursive = FALSE, full.names = TRUE)
 yrs_imd <- str_sub(path_imd_list, start = -4)
 file_imd <- map_vec(seq_along(path_imd_list), function(i){paste0(path_imd_list[i], "/IMD_", yrs_imd[i], ".vrt")})
-
-
-# Read virtual rasters
-imd_data <- map(file_imd, ~rast(.x))
-names(imd_data) <- yrs_imd
 
 ## Clean the R environment
 rm(list = setdiff(ls(), 
@@ -527,7 +522,7 @@ for(tbl in tables){
 
 # Read intermediate layer (if necessary)
 # path_gpkg <- paste0(str_remove(tempdir(), "Rtmp\\w*"), "URGR_tmp_layers")
-# gk_list <- dir(path_gpkg, recursive = FALSE, full.names = TRUE)
+# gk_list <- dir(path_gpkg, recursive = FALSE, pattern = "GK_not_et01", full.names = TRUE)
 # 
 # walk(gk_list, function(tbl) {
 # 
@@ -658,7 +653,7 @@ for(tbl in tables){
 #   st_write(paste0(path_gpkg, str_extract(x, "(?<=et01_).{2}"), ".gpkg"))
 # })
 # 
-# # Read intermediate layer (if necessary)
+# Read intermediate layer (if necessary)
 # path_gpkg <- paste0(str_remove(tempdir(), "Rtmp\\w*"), "URGR_tmp_layers")
 # gk_list <- dir(path_gpkg, recursive = FALSE, pattern = "GK_et01", full.names = TRUE)
 # 
@@ -833,8 +828,6 @@ rm(list = setdiff(ls(),
                     "pull",
                     "conn_ug")))
 
-# Close duckdb database
-ddbs_stop_conn(conn_ug)
 ```
 
 ### 7.3 LAU (D-3) and DEGURBA (D-4)
@@ -916,7 +909,7 @@ ddbs_list_tables(conn_ug)
 
 ## Clean the R environment
 rm(list = setdiff(ls(), 
-                  c("pm25_data",
+                  c("imd_data",
                     "pull",
                     "conn_ug")))
 
@@ -936,10 +929,274 @@ For the variant URGR-005 the smallest interpretable reporting units are the enti
 **Compilation process** = spatial intersection between LAUs data and ET01. Then spatial intersection with IMD data, for all years. We compile a "non-impervious" percentage for each polygon and do an area-weighted mean at LAU level. These four indicators rely on the same compilation process, hence we do them all at once. *Note: if one wanted to compile URGR_004 directly, the first spatial intersection would not be necessary.*
 
 We start by doing the spatial intersection between ET01 and LAUs. 
+*Note: we add an extensive cleaning steps to ensure that the resultsing first intersection only has polygons or multipolygons gemoetries as it is a requirement from `exact_extract`.*
+
+```{r}
+#| eval: false
+#| code-summary: "Spatial intersection ET01 and LAU"
+
+## Intersect ET01 with LAUs - block processing to avoid memory issues
+
+# Block intersections
+fylke_nb <- dbGetQuery(conn_ug, "SELECT DISTINCT Fylke_nummer FROM cln_lau") %>%
+              unname() %>%
+              unlist()
+
+walk(seq_along(fylke_nb), function(i){
+
+  # Input data  
+  et <- as_duckspatial_df(paste0("cln_gk_et01_", fylke_nb[i]), conn = conn_ug) 
+  
+  lau <- as_duckspatial_df("cln_lau", conn = conn_ug) %>%
+          filter(Fylke_nummer == !!fylke_nb[i])
+
+  
+  # Intersection
+  ddbs_intersection(lau,
+                    et,
+                    conn = conn_ug,
+                    conn_x = conn_ug,
+                    conn_y = conn_ug) %>% 
+    
+    ddbs_make_valid() %>%
+    
+    # Need to remove linestrings and geometrycollection for extact_extract
+    mutate(geometry = ST_CollectionExtract(geometry, 3L)) %>% # clean up geometrycollections
+    filter(!ST_IsEmpty(geometry)) %>% # remove empty geometry resulting from the step above
+    filter(ddbs_geometry_type(geometry) %in% c("POLYGON", "MULTIPOLYGON")) %>% # keep only polygons and multipolygons
+    
+    ddbs_area(new_column = "area_m2", name = paste0("lau_et01_", fylke_nb[i]), conn = conn_ug, overwrite = TRUE)
+  
+})
+
+# Verify table is in my duckdb conn_pm database
+ddbs_list_tables(conn_ug)
+
+## Check valididty
+tables <- dbListTables(conn_ug) %>%
+            keep(~ startsWith(.x, "lau_et01_"))
+
+for(tbl in tables){
+  
+  message("Processing: ", tbl)
+  
+  # Checks
+  valid_check <- ddbs_is_valid(tbl, conn = conn_ug) %>%
+                    filter(!is_valid) %>%
+                    ddbs_collect() %>%
+                    dim()
+
+  empty_check <- ddbs_is_empty(tbl, conn = conn_ug) %>%
+                    filter(is_empty == TRUE) %>%
+                    ddbs_collect() %>%
+                    dim()
+
+  simple_check <- ddbs_is_simple(tbl, conn = conn_ug) %>%
+                    filter(!is_simple) %>%
+                    ddbs_collect() %>%
+                    dim()
+  
+  # Print - should all have 0 rows
+  print(valid_check)
+  print(empty_check)
+  print(simple_check)
+
+  
+}
+
+## Export the temporary layers, just in case of crash
+path_gpkg <- paste0(str_remove(tempdir(), "Rtmp\\w*"), "URGR_tmp_layers/ET01_LAU_3035.gpkg")
+
+for (lyr in fylke_nb){
+  
+as_duckspatial_df(paste0("lau_et01_", lyr), conn = conn_ug) %>%
+                ddbs_collect() %>%
+    
+    st_write(path_gpkg,
+             layer = lyr,
+             append = TRUE)
+}
+
+## Read intermediate layer (if needed)
+# path_gpkg <- paste0(str_remove(tempdir(), "Rtmp\\w*"), "URGR_tmp_layers/ET01_LAU_3035.gpkg")
+# layers <- st_layers(path_gpkg)$name
+# 
+# walk(layers, function(lyr) {
+# 
+#   ddbs_data <- ddbs_open_dataset(path_gpkg, layer = lyr, conn = conn_ug)
+# 
+#   ddbs_write_table(data = ddbs_data,
+#                    conn = conn_ug,
+#                    name = paste0("lau_et01_", lyr),
+#                    overwrite = TRUE)
+# 
+#   message("Wrote layer: ", lyr)
+# })
 
 
+## Clean duckdb database
+tables <- dbListTables(conn_ug)
+
+tables <- tables[!tables %in% c(keep(tables, startsWith(tables, "cln_")),
+                               keep(tables, startsWith(tables,"lau_et01")))]
+
+for (tbl in tables) {
+
+  if(substr(tbl, 1, 9) == "temp_view"){
+
+    dbExecute(conn_ug, sprintf("DROP VIEW IF EXISTS %s", dbQuoteIdentifier(conn_ug, tbl)))
+
+  }else{
+
+    dbExecute(conn_ug, sprintf("DROP TABLE IF EXISTS %s", dbQuoteIdentifier(conn_ug, tbl)))
+
+  }
+
+}
 
 
+## Clean the R environment
+rm(list = setdiff(ls(), 
+                  c("imd_data",
+                    "pull",
+                    "conn_ug")))
+
+```
+
+
+Now we do the spatial intersection with the ET01 in LAUs and IMD data. *Note: No need to wrap the raster because the virtual raster can be passed through workers. But we need to store the result from the previous intersection in the R environment because workers can't read from the duckdb databse due to the locking of the main session.*
+```{r}
+#| eval: false
+#| code-summary: "Spatial intersection ET01-LAU and IMD data"
+#| 
+
+## Merge then back together and store them in R environment for parallel processing at the next step
+tables <- dbListTables(conn_ug)
+tables <- keep(tables, startsWith(tables, "lau_et01_"))
+
+lau_et01_all <- map(tables, function(tbl) {
+
+  as_duckspatial_df(tbl, conn = conn_ug) %>%
+    ddbs_collect()}) %>%
+  bind_rows() %>%
+  select(!c(fid))
+
+
+## Fylke number for parallelisation
+fylke_nb <- dbGetQuery(conn_ug, "SELECT DISTINCT Fylke_nummer FROM cln_lau") %>%
+              unname() %>%
+              unlist()
+
+## Path to IMD virtual rasters 
+path_imd <- "/data/P-Prosjekter2/412413_2023_no_egd/git_data/IMD_Copernicus"
+path_imd_list <- dir(path_imd, recursive = FALSE, full.names = TRUE)
+yrs_imd <- str_sub(path_imd_list, start = -4)
+file_imd <- map_vec(seq_along(path_imd_list), function(i){paste0(path_imd_list[i], "/IMD_", yrs_imd[i], ".vrt")})
+
+
+## Retrieve IMD per year and fylke
+daemons(5)
+
+lau_et01_imd <- map(seq_along(file_imd), function(yr){
+  
+  # Year
+  year <- yrs_imd[yr]
+  
+  message("Processing: ", year)
+  
+    # Parallelise
+  imd_yr <- map(seq_along(fylke_nb), in_parallel(function(fyk){
+    
+    # Libraries needed
+    library(duckspatial)
+    library(exactextractr)
+    library(dplyr)
+    library(terra)
+    library(duckdb)
+    library(DBI)
+
+    # et01 for filke fyk
+    lau_et01 <- filter(lau_et01_all,
+                       Fylke_nummer == fylke_nb[fyk])
+    
+    # IMD input
+    imd <- rast(file_imd[yr])
+    
+    # Run exact_extract
+    exact_extract(imd, lau_et01, fun = c("mean"), append_cols = TRUE) %>%
+      mutate(`Accounting period` = year)
+    
+  },
+  file_imd = file_imd,
+  year = year,
+  fylke_nb = fylke_nb,
+  lau_et01_all = lau_et01_all,
+  yr = yr))
+  
+})
+
+daemons(0)
+
+
+# Clean the R environment
+rm(list = setdiff(ls(), 
+                  c("pull",
+                    "conn_ug",
+                    "imd_data",
+                    "lau_et01_all",
+                    "lau_et01_imd")))
+
+```
+
+Now, we compile the four remaining URAQ indicators: URGR_001 to URGR_004. 
+
+```{r}
+#| eval: false
+#| code-summary: "Compile URGR_001"
+
+## URAQ national level - area-weighted mean
+uraq_001_nat <- map(seq_along(lau_et01_pm25), function(x){
+                      lau_et01_pm25[[x]] %>%
+                        bind_rows() %>%
+                        filter(DEGURBA == 1) %>%
+                        summarise("Average PM2.5 concentration µg/m3" = stats:::weighted.mean(mean, area_m2, na.rm =TRUE))}) 
+
+uraq_002_nat <- uraq_002_nat %>%
+                  bind_rows() %>%
+                  mutate(Year = as.numeric(names(pm25_data)))
+  
+  
+
+## URAQ municipal level
+uraq_002_mun <- map(seq_along(lau_et01_pm25), function(x){
+                        lau_et01_pm25[[x]] %>%
+                          bind_rows() %>%
+                          filter(DEGURBA == 1) %>%
+                          group_by(LAU_NAME, GISCO_ID) %>%
+                          summarise("Average PM2.5 concentration µg/m3" = stats:::weighted.mean(mean, area_m2, na.rm =TRUE)) %>%
+                          relocate(LAU_NAME, .after = GISCO_ID) %>%
+                          rename("Accounting area (municipality name)"= LAU_NAME,
+                                 "Accounting area (municipality number)"= GISCO_ID) }) 
+  
+uraq_002_mun <- uraq_002_mun %>%
+                  bind_rows() %>%
+                  mutate(Year = as.numeric(names(pm25_data)))
+                  
+## Clean the R environment
+rm(list = setdiff(ls(), 
+                  c("pm25_data",
+                    "pull",
+                    "conn_pm",
+                    "lau_et01_pm25",
+                    "uraq_001_nat",
+                    "uraq_001_mun",
+                    "uraq_002_nat",
+                    "uraq_002_mun")))
+```
+
+
+# Close duckdb database
+ddbs_stop_conn(conn_ug)
 
 
 
