@@ -1079,7 +1079,8 @@ lau_et01_all <- map(tables, function(tbl) {
   as_duckspatial_df(tbl, conn = conn_ug) %>%
     ddbs_collect()}) %>%
   bind_rows() %>%
-  select(!c(fid))
+  #select(!c(fid))
+  rename(fid_original = fid)
 
 
 ## Fylke number for parallelisation
@@ -1148,52 +1149,148 @@ rm(list = setdiff(ls(),
 
 ```
 
-Now, we compile the four remaining URAQ indicators: URGR_001 to URGR_004. 
+Now, we compile the four remaining URAQ indicators: URGR_001 to URGR_004. During the extraction of the raster cell values, there will be the creation of "NA" values. This means that some polygon will have a imperviousness share of "NA". This is due to some municipal polygons, partially overlap with NA raster cells.We remove these NAs when performing the mean.
 
 ```{r}
 #| eval: false
 #| code-summary: "Compile URGR_001"
 
 ## URAQ national level - area-weighted mean
-uraq_001_nat <- map(seq_along(lau_et01_pm25), function(x){
-                      lau_et01_pm25[[x]] %>%
+urgr_001_nat <- map(seq_along(lau_et01_imd), function(x){
+                      lau_et01_imd[[x]] %>%
                         bind_rows() %>%
                         filter(DEGURBA == 1) %>%
-                        summarise("Average PM2.5 concentration µg/m3" = stats:::weighted.mean(mean, area_m2, na.rm =TRUE))}) 
+                        mutate(non_imp = 100 - mean) %>%
+                        summarise("Average non-impervious area" = stats:::weighted.mean(non_imp, area_m2, na.rm = TRUE))}) 
 
-uraq_002_nat <- uraq_002_nat %>%
+urgr_001_nat <- urgr_001_nat %>%
                   bind_rows() %>%
-                  mutate(Year = as.numeric(names(pm25_data)))
+                  mutate(Year = as.numeric(names(imd_data)))
   
   
 
 ## URAQ municipal level
-uraq_002_mun <- map(seq_along(lau_et01_pm25), function(x){
-                        lau_et01_pm25[[x]] %>%
+urgr_001_mun <- map(seq_along(lau_et01_imd), function(x){
+                        lau_et01_imd[[x]] %>%
                           bind_rows() %>%
                           filter(DEGURBA == 1) %>%
+                          mutate(non_imp = 100 - mean) %>%
                           group_by(LAU_NAME, GISCO_ID) %>%
-                          summarise("Average PM2.5 concentration µg/m3" = stats:::weighted.mean(mean, area_m2, na.rm =TRUE)) %>%
+                          summarise("Average PM2.5 concentration µg/m3" = stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE)) %>%
                           relocate(LAU_NAME, .after = GISCO_ID) %>%
                           rename("Accounting area (municipality name)"= LAU_NAME,
                                  "Accounting area (municipality number)"= GISCO_ID) }) 
   
-uraq_002_mun <- uraq_002_mun %>%
+urgr_001_mun <- uraq_001_mun %>%
                   bind_rows() %>%
-                  mutate(Year = as.numeric(names(pm25_data)))
+                  mutate(Year = as.numeric(names(imd_data)))
                   
 ## Clean the R environment
 rm(list = setdiff(ls(), 
-                  c("pm25_data",
-                    "pull",
-                    "conn_pm",
-                    "lau_et01_pm25",
-                    "uraq_001_nat",
-                    "uraq_001_mun",
-                    "uraq_002_nat",
-                    "uraq_002_mun")))
+                  c("pull",
+                    "conn_ug",
+                    "imd_data",
+                    "lau_et01_all",
+                    "lau_et01_imd",
+                    "urgr_001_nat",
+                    "urgr_001_mun")))
 ```
 
+```{r}
+#| eval: false
+#| code-summary: "Compile URGR_002"
+
+## URAQ national level - area-weighted mean
+urgr_002_nat <- map(seq_along(lau_et01_imd), function(x){
+                      lau_et01_imd[[x]] %>%
+                        bind_rows() %>%
+                        filter(DEGURBA == 2) %>%
+                        mutate(non_imp = 100 - mean) %>%
+                        summarise("Average non-impervious area" = stats:::weighted.mean(non_imp, area_m2, na.rm = TRUE))}) 
+
+urgr_002_nat <- urgr_002_nat %>%
+                  bind_rows() %>%
+                  mutate(Year = as.numeric(names(imd_data)))
+  
+  
+
+## URAQ municipal level
+urgr_002_mun <- map(seq_along(lau_et01_imd), function(x){
+                        lau_et01_imd[[x]] %>%
+                          bind_rows() %>%
+                          filter(DEGURBA == 2) %>%
+                          mutate(non_imp = 100 - mean) %>%
+                          group_by(LAU_NAME, GISCO_ID) %>%
+                          summarise("Average PM2.5 concentration µg/m3" = stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE)) %>%
+                          relocate(LAU_NAME, .after = GISCO_ID) %>%
+                          rename("Accounting area (municipality name)"= LAU_NAME,
+                                 "Accounting area (municipality number)"= GISCO_ID) }) 
+  
+urgr_002_mun <- uraq_002_mun %>%
+                  bind_rows() %>%
+                  mutate(Year = as.numeric(names(imd_data)))
+                  
+## Clean the R environment
+rm(list = setdiff(ls(), 
+                  c("pull",
+                    "conn_ug",
+                    "imd_data",
+                    "lau_et01_all",
+                    "lau_et01_imd",
+                    "urgr_001_nat",
+                    "urgr_001_mun",
+                    "urgr_002_nat",
+                    "urgr_002_mun")))
+```
+
+```{r}
+#| eval: false
+#| code-summary: "Compile URGR_003"
+
+## URAQ national level - area-weighted mean
+urgr_003_nat <- map(seq_along(lau_et01_imd), function(x){
+                      lau_et01_imd[[x]] %>%
+                        bind_rows() %>%
+                        filter(DEGURBA == 3) %>%
+                        mutate(non_imp = 100 - mean) %>%
+                        summarise("Average non-impervious area" = stats:::weighted.mean(non_imp, area_m2, na.rm = TRUE))}) 
+
+urgr_003_nat <- urgr_003_nat %>%
+                  bind_rows() %>%
+                  mutate(Year = as.numeric(names(imd_data)))
+  
+  
+
+## URAQ municipal level
+urgr_003_mun <- map(seq_along(lau_et01_imd), function(x){
+                        lau_et01_imd[[x]] %>%
+                          bind_rows() %>%
+                          filter(DEGURBA == 3) %>%
+                          mutate(non_imp = 100 - mean) %>%
+                          group_by(LAU_NAME, GISCO_ID) %>%
+                          summarise("Average PM2.5 concentration µg/m3" = stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE)) %>%
+                          relocate(LAU_NAME, .after = GISCO_ID) %>%
+                          rename("Accounting area (municipality name)"= LAU_NAME,
+                                 "Accounting area (municipality number)"= GISCO_ID) }) 
+  
+urgr_003_mun <- uraq_003_mun %>%
+                  bind_rows() %>%
+                  mutate(Year = as.numeric(names(imd_data)))
+                  
+## Clean the R environment
+rm(list = setdiff(ls(), 
+                  c("pull",
+                    "conn_ug",
+                    "imd_data",
+                    "lau_et01_all",
+                    "lau_et01_imd",
+                    "urgr_001_nat",
+                    "urgr_001_mun",
+                    "urgr_002_nat",
+                    "urgr_002_mun",
+                    "urgr_003_nat",
+                    "urgr_003_mun")))
+```
 
 # Close duckdb database
 ddbs_stop_conn(conn_ug)
