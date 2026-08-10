@@ -626,6 +626,7 @@ rm(list = setdiff(ls(),
 We start by doing the spatial intersection between ET01 and LAUs. 
 
 *Note 1: the spatial intersection is done with `duckspatial` but we export the result in the R environment so the second spatial intersection with PM2.5 data can be performed in parallel. This is because the Duckdb connections don't transfer to parallel workers.*
+
 *Note 2: we modified the function ddbs_intersecion from the `duckspatial` package so it could return the columns of all the input datasets. This required us to take the code of ddbs_intersection() directly from its Github repo: https://github.com/Cidree/duckspatial/tree/main. It also required us to download a bunch of functions, from this same repo, necessary to run ddbs:intersection().*
 
 *Note 3: we add an extensive cleaning steps to ensure that the resultsing first intersection only has polygons or multipolygons gemoetries as it is a requirement from `exact_extract`.*
@@ -796,10 +797,6 @@ lau_et01_pm25 <- map(seq_along(pm25_data_w), function(yr){
   year <- names(pm25_data_w)[yr]
   
   message("Processing: ", year)
-  
-  # Retrieve the (temporary) file path to conn_pm BEFORE going parallel
-  db_path <- dbGetQuery(conn_pm, "PRAGMA database_list;") %>%
-                select(file)
   
     # Parallelise
   pm25_yr <- map(seq_along(fylke_nb), in_parallel(function(fyk){
