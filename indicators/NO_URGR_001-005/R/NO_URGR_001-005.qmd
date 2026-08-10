@@ -1728,7 +1728,7 @@ res_municipal <- bind_rows(urgr_001_mun,
 
 
 # Clean R environment
-rm(ls())
+rm(list = ls())
 
 # Show table
 datatable(res_municipal, filter = "top") %>%
