@@ -1161,7 +1161,7 @@ urgr_001_nat <- map(seq_along(lau_et01_imd), function(x){
                         bind_rows() %>%
                         filter(DEGURBA == 1) %>%
                         mutate(non_imp = 100 - mean) %>%
-                        summarise("Share of urban green/blue spaces (%)" = round2(stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE), digitd = 2)))}) 
+                        summarise("Share of urban green/blue spaces (%)" = round2(stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE), digitd = 2))}) 
 
 urgr_001_nat <- urgr_001_nat %>%
                   bind_rows() %>%
@@ -1180,7 +1180,7 @@ urgr_001_mun <- map(seq_along(lau_et01_imd), function(x){
                           filter(DEGURBA == 1) %>%
                           mutate(non_imp = 100 - mean) %>%
                           group_by(LAU_NAME, GISCO_ID) %>%
-                          summarise("Share of urban green/blue spaces (%)" = round2(stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE), digitd = 2)) %>%
+                          summarise("Share of urban green/blue spaces (%)" = round2(stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE), digits = 2)) %>%
                           relocate(LAU_NAME, .after = GISCO_ID) %>%
                           rename("Accounting area (municipality name)"= LAU_NAME,
                                  "Accounting area (municipality number)"= GISCO_ID) }) 
@@ -1214,7 +1214,7 @@ urgr_002_nat <- map(seq_along(lau_et01_imd), function(x){
                         bind_rows() %>%
                         filter(DEGURBA == 2) %>%
                         mutate(non_imp = 100 - mean) %>%
-                        summarise("Share of urban green/blue spaces (%)" = round2(stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE), digitd = 2))}) 
+                        summarise("Share of urban green/blue spaces (%)" = round2(stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE), digits = 2))}) 
 
 urgr_002_nat <- urgr_002_nat %>%
                   bind_rows() %>%
@@ -1233,7 +1233,7 @@ urgr_002_mun <- map(seq_along(lau_et01_imd), function(x){
                           filter(DEGURBA == 2) %>%
                           mutate(non_imp = 100 - mean) %>%
                           group_by(LAU_NAME, GISCO_ID) %>%
-                          summarise("Share of urban green/blue spaces (%)" = round2(stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE), digitd = 2)) %>%
+                          summarise("Share of urban green/blue spaces (%)" = round2(stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE), digits = 2)) %>%
                           relocate(LAU_NAME, .after = GISCO_ID) %>%
                           rename("Accounting area (municipality name)"= LAU_NAME,
                                  "Accounting area (municipality number)"= GISCO_ID) }) 
@@ -1269,7 +1269,7 @@ urgr_003_nat <- map(seq_along(lau_et01_imd), function(x){
                         bind_rows() %>%
                         filter(DEGURBA == 3) %>%
                         mutate(non_imp = 100 - mean) %>%
-                        summarise("Share of urban green/blue spaces (%)" = round2(stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE), digitd = 2))}) 
+                        summarise("Share of urban green/blue spaces (%)" = round2(stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE), digits = 2))}) 
 
 urgr_003_nat <- urgr_003_nat %>%
                   bind_rows() %>%
@@ -1288,7 +1288,7 @@ urgr_003_mun <- map(seq_along(lau_et01_imd), function(x){
                           filter(DEGURBA == 3) %>%
                           mutate(non_imp = 100 - mean) %>%
                           group_by(LAU_NAME, GISCO_ID) %>%
-                          summarise("Share of urban green/blue spaces (%)" = round2(stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE), digitd = 2))) %>%
+                          summarise("Share of urban green/blue spaces (%)" = round2(stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE), digits = 2)) %>%
                           relocate(LAU_NAME, .after = GISCO_ID) %>%
                           rename("Accounting area (municipality name)"= LAU_NAME,
                                  "Accounting area (municipality number)"= GISCO_ID) }) 
@@ -1325,7 +1325,7 @@ urgr_004_nat <- map(seq_along(lau_et01_imd), function(x){
                       lau_et01_imd[[x]] %>%
                       bind_rows() %>%
                       mutate(non_imp = 100 - mean) %>%
-                      summarise("Share of urban green/blue spaces (%)" = round2(stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE), digitd = 2))}) 
+                      summarise("Share of urban green/blue spaces (%)" = round2(stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE), digits = 2))}) 
 
 urgr_004_nat <- urgr_004_nat %>%
                   bind_rows() %>%
