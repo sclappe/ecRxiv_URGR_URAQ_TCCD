@@ -115,6 +115,7 @@ library(hdar)
 library(DT)
 library(numform)
 library(giscoR)
+library(conflicted)
 
 # weird workarounds for cache issues
 conflicts_prefer(dplyr::filter)
@@ -420,9 +421,35 @@ We used the following four datasets:
 * **D-4** *DEGURBA*  (Degree of urbanisation) A tabular dataset assigning one of three DEGURBA classes (1: "cities"; 2: "towns and suburbs"; 3: "rural areas") to each municipality. These classes were used to breakdown the results for URAQ_001-003.
 
 
-We downloaded, cleaned and formatted the data prior to compiling URAQ indicators. Section 7 only presents how to load the cleaned data.
+We downloaded, cleaned and formatted the data prior to compiling URGR indicators. Section 7 only presents how to load the cleaned data. In the data analyses, we will use a mix of `duckspatial` and `terra` packages. The first one is faster at handling big vector data than `sf` but raster operations are not part of it, so we use `sf` and `terra` to handle vector-raster operations. Hence vector datasets are written in a duckdb database whose connection is set below:
+
+```{r}
+#| eval: false
+#| code-summary: "Create a DuckDB connection"
+conn_tcd <- ddbs_create_conn(dbdir = paste0(str_remove(tempdir(), "Rtmp\\w*"), "duckdb_conn/duckspatial37a19edb6de66.duckdb"), threads = 10, memory_limit_gb = 30)
+
+```
 
 ### 7.1 Copernicus HRL TCD (D-1)
+We just load the virtual rasters we created for the years 2018 to 2021. These virtual rasters were previously built from different TCD tiles for each year. The only cleaning steps were to apply a mask for Norway (to select the relevant tiles) and re-classify the value 255 as NA (outside area).
+
+```{r}
+#| eval: false
+#| code-summary: "Load Copernicus IMD"
+
+# Path to the Copernicus IMD data
+path_tcd <- "/data/P-Prosjekter2/412413_2023_no_egd/git_data/TCD_Copernicus"
+path_tcd_list <- dir(path_tcd, recursive = FALSE, full.names = TRUE)
+yrs_tcd <- str_sub(path_tcd_list, start = -4)
+file_tcd <- map_vec(seq_along(path_tcd_list), function(i){paste0(path_tcd_list[i], "/TCD_", yrs_tcd[i], ".vrt")})
+
+## Clean the R environment
+rm(list = setdiff(ls(), 
+                  c("pull",
+                    "conn_tcd",
+                    "file_tcd")))
+
+```
 
 
 
@@ -435,7 +462,7 @@ To facilitate analyses in block processes afterwards, we create one table per fy
 
 ```{r}
 #| eval: false
-#| code-summary: "Load Grunnkart - ET01"
+#| code-summary: "Load Grunnkart - ET01 and ET04"
 
 # Path
 gk_path <- "/data/P-Prosjekter2/412413_2023_no_egd/git_data/GK_processed/fylke_level"
@@ -445,57 +472,58 @@ gk_list <- dir(gk_path, pattern = "UTM33",recursive = FALSE, full.names = TRUE)
 # Store in duckdb database
 walk(gk_list, function(x){
   
-  dbExecute(conn_ug, 
+  dbExecute(conn_tcd, 
       sprintf("
         CREATE TABLE '%s' AS
         SELECT okosystemtype_1, geom
         FROM ST_Read('%s')
-        WHERE okosystemtype_1 = 'Settlements and other artificial areas'
+        WHERE okosystemtype_1 = 'Settlements and other artificial areas' 
+          OR okosystemtype_1 = 'Forest and woodlands' 
       ", 
-paste0("gk_et01_", str_extract(x, "(?<=UTM33_).{2}")),
+paste0("gk_et014_", str_extract(x, "(?<=UTM33_).{2}")),
 x))
   
 })
 
 # Verify tables are in my duckdb conn_pm database
-ddbs_list_tables(conn_ug)
+ddbs_list_tables(conn_tcd)
 
 # Transform into IMD CRS
-tables <- dbListTables(conn_ug)
-tbl_list <- keep(tables, startsWith(tables, "gk_et01"))
+tables <- dbListTables(conn_tcd)
+tbl_list <- keep(tables, startsWith(tables, "gk_et014"))
                    
-imd_crs <- st_crs(imd_data[[1]])
+tcd_crs <- rast(file_tcd[1]) %>% st_crs()
 
 walk(tbl_list, function(tbl){
   
 # transform  
-ddbs_transform(tbl, imd_crs, conn = conn_ug) %>% 
+ddbs_transform(tbl, tcd_crs, conn = conn_tcd) %>% 
 
     # make valid
-    ddbs_make_valid(conn = conn_ug, name = paste0("cln_", tbl), overwrite = TRUE)
+    ddbs_make_valid(conn = conn_tcd, name = paste0("cln_", tbl), overwrite = TRUE)
   
 })
 
 # Check validity
-tables <- dbListTables(conn_ug) %>%
-            keep(~ startsWith(.x, "cln_gk_et01"))
+tables <- dbListTables(conn_tcd) %>%
+            keep(~ startsWith(.x, "cln_gk_et014"))
 
 for(tbl in tables){
   
   message("Processing: ", tbl)
   
   # Checks
-  valid_check <- ddbs_is_valid(tbl, conn = conn_ug) %>%
+  valid_check <- ddbs_is_valid(tbl, conn = conn_tcd) %>%
                     filter(!is_valid) %>%
                     ddbs_collect() %>%
                     dim()
 
-  empty_check <- ddbs_is_empty(tbl, conn = conn_ug) %>%
+  empty_check <- ddbs_is_empty(tbl, conn = conn_tcd) %>%
                     filter(is_empty == TRUE) %>%
                     ddbs_collect() %>%
                     dim()
 
-  simple_check <- ddbs_is_simple(tbl, conn = conn_ug) %>%
+  simple_check <- ddbs_is_simple(tbl, conn = conn_tcd) %>%
                     filter(!is_simple) %>%
                     ddbs_collect() %>%
                     dim()
@@ -509,27 +537,27 @@ for(tbl in tables){
 }
 
 # # Write the intermediate product in case of crash
-# path_gpkg <- paste0(str_remove(tempdir(), "Rtmp\\w*"), "URGR_tmp_layers/GK_et01_3035_")
-# tables <- grep('^cln_gk_et', dbListTables(conn_ug), value = TRUE)
+# path_gpkg <- paste0(str_remove(tempdir(), "Rtmp\\w*"), "TCCD_tmp_layers/GK_et014_3035_")
+# tables <- grep('^cln_gk_et014', dbListTables(conn_tcd), value = TRUE)
 # 
 # walk(tables, function(x){
 # 
-#   as_duckspatial_df(x, conn = conn_ug) %>%
+#   as_duckspatial_df(x, conn = conn_tcd) %>%
 #   ddbs_collect() %>%
-#   st_write(paste0(path_gpkg, str_extract(x, "(?<=et01_).{2}"), ".gpkg"))
+#   st_write(paste0(path_gpkg, str_extract(x, "(?<=et014_).{2}"), ".gpkg"))
 # })
-# 
-# Read intermediate layer (if necessary)
-# path_gpkg <- paste0(str_remove(tempdir(), "Rtmp\\w*"), "URGR_tmp_layers")
+
+# # Read intermediate layer (if necessary)
+# path_gpkg <- paste0(str_remove(tempdir(), "Rtmp\\w*"), "TCCD_tmp_layers")
 # gk_list <- dir(path_gpkg, recursive = FALSE, pattern = "GK_et01", full.names = TRUE)
 # 
 # walk(gk_list, function(tbl) {
 # 
-#   ddbs_data <- ddbs_open_dataset(tbl, conn = conn_ug)
+#   ddbs_data <- ddbs_open_dataset(tbl, conn = conn_tcd)
 # 
 #   ddbs_write_table(data = ddbs_data,
-#                    conn = conn_ug,
-#                    name = paste0("cln_gk_et01_", str_extract(tbl, "(?<=3035_).{2}")),
+#                    conn = conn_tcd,
+#                    name = paste0("cln_gk_et014_", str_extract(tbl, "(?<=3035_).{2}")),
 #                    overwrite = TRUE)
 # 
 #   message("Wrote layer: ", tbl)
@@ -537,164 +565,31 @@ for(tbl in tables){
 
 
 # Clean duckdb database of the raw tables
-tables <- dbListTables(conn_ug) 
-              
+tables <- dbListTables(conn_tcd) 
 tables <- tables[!tables %in% keep(tables, startsWith(tables, "cln_"))]
 
 for (tbl in tables) {
 
   if(substr(tbl, 1, 9) == "temp_view"){
 
-    dbExecute(conn_ug, sprintf("DROP VIEW IF EXISTS %s", dbQuoteIdentifier(conn_ug, tbl)))
+    dbExecute(conn_tcd, sprintf("DROP VIEW IF EXISTS %s", dbQuoteIdentifier(conn_tcd, tbl)))
 
   }else{
 
-    dbExecute(conn_ug, sprintf("DROP TABLE IF EXISTS %s", dbQuoteIdentifier(conn_ug, tbl)))
+    dbExecute(conn_tcd, sprintf("DROP TABLE IF EXISTS %s", dbQuoteIdentifier(conn_tcd, tbl)))
 
   }
 
 }
 
 # Verify tables are in my duckdb conn_pm database
-ddbs_list_tables(conn_ug)
+ddbs_list_tables(conn_tcd)
 
 # Clean the R environment
 rm(list = setdiff(ls(), 
-                  c("imd_data",
-                    "pull",
-                    "conn_ug")))
-```
-
-```{r}
-#| eval: false
-#| code-summary: "Load Grunnkart - ET04"
-
-# Path
-gk_path <- "/data/P-Prosjekter2/412413_2023_no_egd/git_data/GK_processed/fylke_level"
-gk_list <- dir(gk_path, pattern = "UTM33",recursive = FALSE, full.names = TRUE)
-
-
-# Store in duckdb database
-walk(gk_list, function(x){
-  
-  dbExecute(conn_ug, 
-      sprintf("
-        CREATE TABLE '%s' AS
-        SELECT okosystemtype_1, geom
-        FROM ST_Read('%s')
-        WHERE okosystemtype_1 = 'Forest and woodlands'
-      ", 
-paste0("gk_et04_", str_extract(x, "(?<=UTM33_).{2}")),
-x))
-  
-})
-
-# Verify tables are in my duckdb conn_pm database
-ddbs_list_tables(conn_ug)
-
-# Transform into IMD CRS
-tables <- dbListTables(conn_ug)
-tbl_list <- keep(tables, startsWith(tables, "gk_et04"))
-                   
-imd_crs <- st_crs(imd_data[[1]])
-
-walk(tbl_list, function(tbl){
-  
-# transform  
-ddbs_transform(tbl, imd_crs, conn = conn_ug) %>% 
-
-    # make valid
-    ddbs_make_valid(conn = conn_ug, name = paste0("cln_", tbl), overwrite = TRUE)
-  
-})
-
-# Check validity
-tables <- dbListTables(conn_ug) %>%
-            keep(~ startsWith(.x, "cln_gk_et04"))
-
-for(tbl in tables){
-  
-  message("Processing: ", tbl)
-  
-  # Checks
-  valid_check <- ddbs_is_valid(tbl, conn = conn_ug) %>%
-                    filter(!is_valid) %>%
-                    ddbs_collect() %>%
-                    dim()
-
-  empty_check <- ddbs_is_empty(tbl, conn = conn_ug) %>%
-                    filter(is_empty == TRUE) %>%
-                    ddbs_collect() %>%
-                    dim()
-
-  simple_check <- ddbs_is_simple(tbl, conn = conn_ug) %>%
-                    filter(!is_simple) %>%
-                    ddbs_collect() %>%
-                    dim()
-  
-  # Print - should all have 0 rows
-  print(valid_check)
-  print(empty_check)
-  print(simple_check)
-
-  
-}
-
-# # Write the intermediate product in case of crash
-# path_gpkg <- paste0(str_remove(tempdir(), "Rtmp\\w*"), "URGR_tmp_layers/GK_et04_3035_")
-# tables <- grep('^cln_gk_et', dbListTables(conn_ug), value = TRUE)
-# 
-# walk(tables, function(x){
-# 
-#   as_duckspatial_df(x, conn = conn_ug) %>%
-#   ddbs_collect() %>%
-#   st_write(paste0(path_gpkg, str_extract(x, "(?<=et04_).{2}"), ".gpkg"))
-# })
-# 
-# Read intermediate layer (if necessary)
-# path_gpkg <- paste0(str_remove(tempdir(), "Rtmp\\w*"), "URGR_tmp_layers")
-# gk_list <- dir(path_gpkg, recursive = FALSE, pattern = "GK_et04", full.names = TRUE)
-# 
-# walk(gk_list, function(tbl) {
-# 
-#   ddbs_data <- ddbs_open_dataset(tbl, conn = conn_ug)
-# 
-#   ddbs_write_table(data = ddbs_data,
-#                    conn = conn_ug,
-#                    name = paste0("cln_gk_et04_", str_extract(tbl, "(?<=3035_).{2}")),
-#                    overwrite = TRUE)
-# 
-#   message("Wrote layer: ", tbl)
-# })
-
-
-# Clean duckdb database of the raw tables
-tables <- dbListTables(conn_ug) 
-              
-tables <- tables[!tables %in% keep(tables, startsWith(tables, "cln_"))]
-
-for (tbl in tables) {
-
-  if(substr(tbl, 1, 9) == "temp_view"){
-
-    dbExecute(conn_ug, sprintf("DROP VIEW IF EXISTS %s", dbQuoteIdentifier(conn_ug, tbl)))
-
-  }else{
-
-    dbExecute(conn_ug, sprintf("DROP TABLE IF EXISTS %s", dbQuoteIdentifier(conn_ug, tbl)))
-
-  }
-
-}
-
-# Verify tables are in my duckdb conn_pm database
-ddbs_list_tables(conn_ug)
-
-# Clean the R environment
-rm(list = setdiff(ls(), 
-                  c("imd_data",
-                    "pull",
-                    "conn_ug")))
+                  c("pull",
+                    "conn_tcd",
+                    "file_tcd")))
 ```
 
 
@@ -745,6 +640,41 @@ lau_dgurb <- inner_join(lau_no,
               select(Fylke_nummer, Fylke_navn, GISCO_ID, LAU_NAME, DEGURBA, geometry) %>%
               st_as_sf()
 
+# Re-project in the CRS of IMD data and store in duckdb database
+st_transform(lau_dgurb, crs = crs(rast(file_tcd[[1]]))) %>%
+      ddbs_make_valid(conn = conn_tcd,
+                      "cln_lau",
+                      overwrite = TRUE)
+ 
+# Check validity
+valid_check <- ddbs_is_valid("cln_lau",
+                              conn = conn_tcd) %>%
+                 filter(!is_valid) %>%
+                 ddbs_collect() %>%
+                 dim()
+
+empty_check <- ddbs_is_empty("cln_lau",
+                             conn = conn_tcd) %>%
+                  filter(is_empty == TRUE) %>%
+                  ddbs_collect() %>%
+                  dim()
+
+simple_check <- ddbs_is_simple("cln_lau",
+                               conn = conn_tcd) %>%
+                  filter(!is_simple) %>% 
+                  ddbs_collect() %>%
+                  dim()
+
+
+# Verify table is in my duckdb conn_ug database
+ddbs_list_tables(conn_tcd)
+
+## Clean the R environment
+rm(list = setdiff(ls(), 
+                  c("pull",
+                    "conn_tcd",
+                    "file_tcd")))
+
 ```
 
 
@@ -753,6 +683,755 @@ The indicator values of the TCCD variable can be interpreted at any spatial scal
 
 
 ## 9. Analyses
+
+### 9.1 Spatial intersections
+All of the indicators are based on the same process so we group all the spatial intersections. 
+
+**Target area** = the area of ET04 for TCCD_001; the area of LAU classified as "cities" (`DEGURBA = 1`) for TCCD_100; the area of ET01 within "cities" LAUs (`DEGURBA = 1`) for TCCD_101 or "towns and subburbs" LAUs (`DEGURBA = 2`) for TCCD_102 or "rural" LAUs (`DEGURBA = 3`) for TCCD_103, or all LAUs for TCCD_104.  
+
+**Target feature** = the tree cover density of Copernicus TCD.
+
+**Compilation process** = we start by a spatial intersection between ET04/ET01 and LAUs. Then we do a spatial intersection between ET04/ET01 and TCD. This results in the tree cover density percentage for each ET04/ET01 polygon. We then just need to do an area-weighted mean at national or LAU level. For TCCD_100, we only do the intersection between TCD and LAU.
+
+
+We start by doing the spatial intersection between ET01/ET04 and LAUs.
+
+*Note 1: we add an extensive cleaning steps to ensure that the resultsing first intersection only has polygons or multipolygons gemoetries as it is a requirement from `exact_extract`.*
+
+*Note 2: we modified the function ddbs_intersecion from the `duckspatial` package so it could return the columns of all the input datasets. This required us to take the code of ddbs_intersection() directly from its Github repo: https://github.com/Cidree/duckspatial/tree/main. It also required us to download a bunch of functions, from this same repo, necessary to run ddbs:intersection().*
+
+```{r}
+#| eval: false
+#| code-summary: "Spatial intersection ET01/ET04 and LAU"
+
+## Intersect ET01 with LAUs - block processing to avoid memory issues
+# Source function to do ddbs_intersection and return all columns
+source(paste0(here::here(),"/indicators/NO_TCCD_001_104/R/functions/utils_fun_ddbs.R"))
+source(paste0(here::here(),"/indicators/NO_TCCD_001_104/R/functions/ddbs_intersection_tcd.R"))
+
+# Block intersections
+fylke_nb <- dbGetQuery(conn_tcd, "SELECT DISTINCT Fylke_nummer FROM cln_lau") %>%
+              unname() %>%
+              unlist()
+
+walk(seq_along(fylke_nb), function(i){
+
+  # Input data  
+  et <- as_duckspatial_df(paste0("cln_gk_et014_", fylke_nb[i]), conn = conn_tcd)
+  
+  lau <- as_duckspatial_df("cln_lau", conn = conn_tcd) %>%
+          filter(Fylke_nummer == !!fylke_nb[i])
+
+  
+  # Intersection
+  ddbs_intersection_tcd(lau,
+                        et,
+                        conn = conn_tcd,
+                        conn_x = conn_tcd,
+                        conn_y = conn_tcd,
+                        keep_cols = "both") %>% 
+    
+    ddbs_make_valid() %>%
+    
+    # Need to remove linestrings and geometrycollection for extact_extract
+    mutate(geometry = ST_CollectionExtract(geometry, 3L)) %>% # clean up geometrycollections
+    filter(!ST_IsEmpty(geometry)) %>% # remove empty geometry resulting from the step above
+    filter(ddbs_geometry_type(geometry) %in% c("POLYGON", "MULTIPOLYGON")) %>% # keep only polygons and multipolygons
+    
+    ddbs_area(new_column = "area_m2", name = paste0("lau_et014_", fylke_nb[i]), conn = conn_tcd, overwrite = TRUE)
+  
+})
+
+# Verify table is in my duckdb conn_pm database
+ddbs_list_tables(conn_tcd)
+
+## Check valididty
+tables <- dbListTables(conn_tcd) %>%
+            keep(~ startsWith(.x, "lau_et014_"))
+
+for(tbl in tables){
+  
+  message("Processing: ", tbl)
+  
+  # Checks
+  valid_check <- ddbs_is_valid(tbl, conn = conn_tcd) %>%
+                    filter(!is_valid) %>%
+                    ddbs_collect() %>%
+                    dim()
+
+  empty_check <- ddbs_is_empty(tbl, conn = conn_tcd) %>%
+                    filter(is_empty == TRUE) %>%
+                    ddbs_collect() %>%
+                    dim()
+
+  simple_check <- ddbs_is_simple(tbl, conn = conn_tcd) %>%
+                    filter(!is_simple) %>%
+                    ddbs_collect() %>%
+                    dim()
+  
+  # Print - should all have 0 rows
+  print(valid_check)
+  print(empty_check)
+  print(simple_check)
+
+  
+}
+
+# ## Export the temporary layers, just in case of crash
+# path_gpkg <- paste0(str_remove(tempdir(), "Rtmp\\w*"), "TCCD_tmp_layers/ET014_LAU_3035.gpkg")
+# 
+# for (lyr in fylke_nb){
+# 
+# as_duckspatial_df(paste0("lau_et014_", lyr), conn = conn_tcd) %>%
+#                 ddbs_collect() %>%
+# 
+#     st_write(path_gpkg,
+#              layer = lyr,
+#              append = TRUE)
+# }
+
+## Read intermediate layer (if needed)
+path_gpkg <- paste0(str_remove(tempdir(), "Rtmp\\w*"), "TCCD_tmp_layers/ET014_LAU_3035.gpkg")
+layers <- st_layers(path_gpkg)$name
+
+walk(layers, function(lyr) {
+
+  ddbs_data <- ddbs_open_dataset(path_gpkg, layer = lyr, conn = conn_tcd)
+
+  ddbs_write_table(data = ddbs_data,
+                   conn = conn_tcd,
+                   name = paste0("lau_et014_", lyr),
+                   overwrite = TRUE)
+
+  message("Wrote layer: ", lyr)
+})
+
+
+## Clean duckdb database
+tables <- dbListTables(conn_tcd)
+tables <- tables[!tables %in% c(keep(tables, startsWith(tables, "cln_lau")),
+                               keep(tables, startsWith(tables,"lau_et014")))]
+
+for (tbl in tables) {
+
+  if(substr(tbl, 1, 9) == "temp_view"){
+
+    dbExecute(conn_tcd, sprintf("DROP VIEW IF EXISTS %s", dbQuoteIdentifier(conn_tcd, tbl)))
+
+  }else{
+
+    dbExecute(conn_tcd, sprintf("DROP TABLE IF EXISTS %s", dbQuoteIdentifier(conn_tcd, tbl)))
+
+  }
+
+}
+
+
+## Clean the R environment
+rm(list = setdiff(ls(), 
+                  c("pull",
+                    "conn_tcd",
+                    "file_tcd")))
+
+```
+
+Now we can use `exact_extract()` to retrieve the tree cover density overlapping the ET04 polygons.
+
+```{r}
+#| eval: false
+#| code-summary: "Spatial intersection ET04-LAU and TCD data"
+#| 
+
+## Merge then back together and store them in R environment for parallel processing at the next step
+tables <- dbListTables(conn_tcd)
+tables <- keep(tables, startsWith(tables, "lau_et014_"))
+
+lau_et04_all <- map(tables, function(tbl) {
+
+  as_duckspatial_df(tbl, conn = conn_tcd) %>%
+    ddbs_collect()}) %>%
+  bind_rows() %>%
+  filter(okosystemtype_1 == "Forest and woodlands")
+
+
+## Fylke number for parallelisation
+fylke_nb <- dbGetQuery(conn_tcd, "SELECT DISTINCT Fylke_nummer FROM cln_lau") %>%
+              unname() %>%
+              unlist()
+
+## Path to TCD virtual rasters 
+path_tcd <- "/data/P-Prosjekter2/412413_2023_no_egd/git_data/TCD_Copernicus"
+path_tcd_list <- dir(path_tcd, recursive = FALSE, full.names = TRUE)
+yrs_tcd <- str_sub(path_tcd_list, start = -4)
+file_tcd <- map_vec(seq_along(path_tcd_list), function(i){paste0(path_tcd_list[i], "/TCD_", yrs_tcd[i], ".vrt")})
+
+
+## Retrieve IMD per year and fylke
+daemons(5)
+
+lau_et04_tcd <- map(seq_along(file_tcd), function(yr){
+  
+  # Year
+  year <- yrs_tcd[yr]
+  
+  message("Processing: ", year)
+  
+    # Parallelise
+  tcd_yr <- map(seq_along(fylke_nb), in_parallel(function(fyk){
+    
+    # Libraries needed
+    library(duckspatial)
+    library(exactextractr)
+    library(dplyr)
+    library(terra)
+    library(duckdb)
+    library(DBI)
+
+    # et01 for filke fyk
+    lau_et04 <- filter(lau_et04_all,
+                       Fylke_nummer == fylke_nb[fyk])
+    
+    # IMD input
+    tcd <- rast(file_tcd[yr])
+    
+    # Run exact_extract
+    exact_extract(tcd, lau_et04, fun = c("mean"), append_cols = TRUE) %>%
+      mutate(`Accounting period` = year)
+    
+  },
+  file_tcd = file_tcd,
+  year = year,
+  fylke_nb = fylke_nb,
+  lau_et04_all = lau_et04_all,
+  yr = yr))
+  
+})
+
+daemons(0)
+
+
+# Clean the R environment
+rm(list = setdiff(ls(), 
+                  c("pull",
+                    "conn_tcd",
+                    "file_tcd",
+                    "lau_et04_tcd")))
+
+```
+
+
+We do the same with ET01 polygons.
+```{r}
+#| eval: false
+#| code-summary: "Spatial intersection ET04-LAU and TCD data"
+#| 
+
+## Merge then back together and store them in R environment for parallel processing at the next step
+tables <- dbListTables(conn_tcd)
+tables <- keep(tables, startsWith(tables, "lau_et014_"))
+
+lau_et01_all <- map(tables, function(tbl) {
+
+  as_duckspatial_df(tbl, conn = conn_tcd) %>%
+    ddbs_collect()}) %>%
+  bind_rows() %>%
+  filter(okosystemtype_1 == "Settlements and other artificial areas")
+
+
+## Fylke number for parallelisation
+fylke_nb <- dbGetQuery(conn_tcd, "SELECT DISTINCT Fylke_nummer FROM cln_lau") %>%
+              unname() %>%
+              unlist()
+
+## Path to TCD virtual rasters 
+path_tcd <- "/data/P-Prosjekter2/412413_2023_no_egd/git_data/TCD_Copernicus"
+path_tcd_list <- dir(path_tcd, recursive = FALSE, full.names = TRUE)
+yrs_tcd <- str_sub(path_tcd_list, start = -4)
+file_tcd <- map_vec(seq_along(path_tcd_list), function(i){paste0(path_tcd_list[i], "/TCD_", yrs_tcd[i], ".vrt")})
+
+
+## Retrieve IMD per year and fylke
+daemons(5)
+
+lau_et01_tcd <- map(seq_along(file_tcd), function(yr){
+  
+  # Year
+  year <- yrs_tcd[yr]
+  
+  message("Processing: ", year)
+  
+    # Parallelise
+  tcd_yr <- map(seq_along(fylke_nb), in_parallel(function(fyk){
+    
+    # Libraries needed
+    library(duckspatial)
+    library(exactextractr)
+    library(dplyr)
+    library(terra)
+    library(duckdb)
+    library(DBI)
+
+    # et01 for filke fyk
+    lau_et01 <- filter(lau_et01_all,
+                       Fylke_nummer == fylke_nb[fyk])
+    
+    # IMD input
+    tcd <- rast(file_tcd[yr])
+    
+    # Run exact_extract
+    exact_extract(tcd, lau_et01, fun = c("mean"), append_cols = TRUE) %>%
+      mutate(`Accounting period` = year)
+    
+  },
+  file_tcd = file_tcd,
+  year = year,
+  fylke_nb = fylke_nb,
+  lau_et01_all = lau_et01_all,
+  yr = yr))
+  
+})
+
+daemons(0)
+
+
+# Clean the R environment
+rm(list = setdiff(ls(), 
+                  c("pull",
+                    "conn_tcd",
+                    "file_tcd",
+                    "lau_et04_tcd",
+                    "lau_et01_tcd")))
+
+```
+
+Finally, we do the extract the tree cover density with the LAU classified as "cities" (`DEGURBA = 1`) 
+```{r}
+#| eval: false
+#| code-summary: "Spatial intersection ET04-LAU and TCD data"
+#| 
+
+## Merge then back together and store them in R environment for parallel processing at the next step
+lau_1 <- as_duckspatial_df("cln_lau", conn = conn_tcd) %>%
+              ddbs_collect() %>%
+              filter(DEGURBA == 1)
+
+
+## Fylke number for parallelisation
+fylke_nb <- dbGetQuery(conn_tcd, "SELECT DISTINCT Fylke_nummer FROM cln_lau") %>%
+              unname() %>%
+              unlist()
+
+## Path to TCD virtual rasters 
+path_tcd <- "/data/P-Prosjekter2/412413_2023_no_egd/git_data/TCD_Copernicus"
+path_tcd_list <- dir(path_tcd, recursive = FALSE, full.names = TRUE)
+yrs_tcd <- str_sub(path_tcd_list, start = -4)
+file_tcd <- map_vec(seq_along(path_tcd_list), function(i){paste0(path_tcd_list[i], "/TCD_", yrs_tcd[i], ".vrt")})
+
+
+## Retrieve IMD per year and fylke
+daemons(5)
+
+lau_1_tcd <- map(seq_along(file_tcd), function(yr){
+  
+  # Year
+  year <- yrs_tcd[yr]
+  
+  message("Processing: ", year)
+  
+    # Parallelise
+  tcd_yr <- map(seq_along(fylke_nb), in_parallel(function(fyk){
+    
+    # Libraries needed
+    library(duckspatial)
+    library(exactextractr)
+    library(dplyr)
+    library(terra)
+    library(duckdb)
+    library(DBI)
+
+    # et01 for filke fyk
+    lau <- filter(lau_1,
+                    Fylke_nummer == fylke_nb[fyk])
+    
+    # IMD input
+    tcd <- rast(file_tcd[yr])
+    
+    # Run exact_extract
+    exact_extract(tcd, lau, fun = c("mean"), append_cols = TRUE) %>%
+      mutate(`Accounting period` = year)
+    
+  },
+  file_tcd = file_tcd,
+  year = year,
+  fylke_nb = fylke_nb,
+  lau_1 = lau_1,
+  yr = yr))
+  
+})
+
+daemons(0)
+
+
+# Clean the R environment
+rm(list = setdiff(ls(), 
+                  c("pull",
+                    "conn_tcd",
+                    "file_tcd",
+                    "lau_et04_tcd",
+                    "lau_et01_tcd",
+                    "lau_1_tcd")))
+
+```
+
+
+### 9.2 Compile TCCD indicators
+
+#### TCCD_001
+```{r}
+#| eval: false
+#| code-summary: "Compile TCCD_001"
+
+## TCCD national level - area-weighted mean
+tccd_001_nat <- map(seq_along(lau_et04_tcd), function(x){
+                      lau_et04_tcd[[x]] %>%
+                        bind_rows() %>%
+                        select(!fid) %>%
+                        summarise("Average tree canopy cover density (%)" = round2(stats:::weighted.mean(mean, area_m2, na.rm =TRUE), digits = 2),
+                                  `Accounting period` = unique(`Accounting period`))}) 
+
+tccd_001_nat <- tccd_001_nat %>%
+                  bind_rows() %>%
+                  mutate(`Indicator` = "Tree canopy cover density in forests",
+                         ID = "TCCD_001",
+                         `Accounting area` = "Norway",
+                         .before = `Average tree canopy cover density (%)`) %>%
+                  relocate(`Accounting period`, .after = `Accounting area`)
+
+
+## TCCD municipal level
+tccd_001_mun <- map(seq_along(lau_et04_tcd), function(x){
+                        lau_et04_tcd[[x]] %>%
+                          bind_rows() %>%
+                          group_by(LAU_NAME, GISCO_ID) %>%
+                        select(!fid) %>%
+                        summarise("Average tree canopy cover density (%)" = round2(stats:::weighted.mean(mean, area_m2, na.rm =TRUE), digits = 2),
+                                  `Accounting period` = unique(`Accounting period`)) %>%
+                          relocate(LAU_NAME, .after = GISCO_ID) %>%
+                          rename("Accounting area (municipality name)"= LAU_NAME,
+                                 "Accounting area (municipality number)"= GISCO_ID) }) 
+  
+tccd_001_mun <- tccd_001_mun %>%
+                  bind_rows() %>%
+                  mutate(`Indicator` = "Tree canopy cover density in forests",
+                         ID = "TCCD_001",
+                         .before = `Accounting area (municipality number)`) %>%
+                  relocate(`Accounting period`, .after = `Accounting area (municipality name)`)
+
+
+                  
+## Clean the R environment
+rm(list = setdiff(ls(), 
+                  c("pull",
+                    "conn_tcd",
+                    "file_tcd",
+                    "lau_et04_tcd",
+                    "lau_et01_tcd",
+                    "lau_1_tcd",
+                    "tccd_001_nat",
+                    "tccd_001_mun")))
+```
+
+
+
+#### TCCD_100
+```{r}
+#| eval: false
+#| code-summary: "Compile TCCD_100"
+
+# Compile LAUs area
+lau_area <- as_duckspatial_df("cln_lau", conn = conn_tcd) %>%
+              ddbs_area(new_column = "area_m2_lau") %>%
+              ddbs_collect() %>%
+              st_drop_geometry() %>%
+              select(GISCO_ID, area_m2_lau)
+
+## TCCD national level - area-weighted mean
+tccd_100_nat <- map(seq_along(lau_1_tcd), function(x){
+                      lau_1_tcd[[x]] %>%
+                        bind_rows() %>%
+                        left_join(., lau_area, by = "GISCO_ID") %>%
+                        summarise("Average tree canopy cover density (%)" = round2(stats:::weighted.mean(mean, area_m2_lau, na.rm =TRUE), digits = 2),
+                                  `Accounting period` = unique(`Accounting period`))}) 
+
+tccd_100_nat <- tccd_100_nat %>%
+                  bind_rows() %>%
+                  mutate(`Indicator` = "Tree canopy cover density in urban areas",
+                         ID = "TCCD_001",
+                         `Accounting area` = "Norway",
+                         .before = `Average tree canopy cover density (%)`) %>%
+                  relocate(`Accounting period`, .after = `Accounting area`)
+  
+  
+
+## TCCD municipal level
+tccd_100_mun <- map(seq_along(lau_1_tcd), function(x){
+                        lau_1_tcd[[x]] %>%
+                          bind_rows() %>%
+                          left_join(., lau_area, by = "GISCO_ID") %>%
+                          group_by(LAU_NAME, GISCO_ID) %>%
+                          summarise("Average tree canopy cover density (%)" = round2(stats:::weighted.mean(mean, area_m2_lau, na.rm =TRUE), digits = 2),
+                                    `Accounting period` = unique(`Accounting period`)) %>%
+                            relocate(LAU_NAME, .after = GISCO_ID) %>%
+                            rename("Accounting area (municipality name)"= LAU_NAME,
+                                   "Accounting area (municipality number)"= GISCO_ID) }) 
+  
+tccd_100_mun <- tccd_001_mun %>%
+                  bind_rows() %>%
+                  mutate(`Indicator` = "Tree canopy cover density in urban areas",
+                         ID = "TCCD_100",
+                         .before = `Accounting area (municipality number)`) %>%
+                  relocate(`Accounting period`, .after = `Accounting area (municipality name)`)
+                  
+## Clean the R environment
+rm(list = setdiff(ls(), 
+                  c("pull",
+                    "conn_tcd",
+                    "file_tcd",
+                    "lau_et04_tcd",
+                    "lau_et01_tcd",
+                    "lau_1_tcd",
+                    "tccd_001_nat",
+                    "tccd_001_mun",
+                    "tccd_100_nat",
+                    "tccd_100_mun")))
+```
+
+
+#### TCCD_101-104
+```{r}
+#| eval: false
+#| code-summary: "Compile TCCD_101"
+
+## TCCD national level - area-weighted mean
+tccd_101_nat <- map(seq_along(lau_et01_tcd), function(x){
+                      lau_et01_tcd[[x]] %>%
+                        bind_rows() %>%
+                        filter(DEGURBA == 1) %>%
+                        summarise("Average tree canopy cover density (%)" = round2(stats:::weighted.mean(mean, area_m2, na.rm =TRUE), digits = 2),
+                                  `Accounting period` = unique(`Accounting period`))}) 
+
+tccd_101_nat <- tccd_101_nat %>%
+                  bind_rows() %>%
+                  mutate(`Indicator` = "Tree canopy cover density in urban areas",
+                         ID = "TCCD_101",
+                         `Accounting area` = "Norway",
+                         .before = `Average tree canopy cover density (%)`) %>%
+                  relocate(`Accounting period`, .after = `Accounting area`)
+  
+  
+
+## TCCD municipal level
+tccd_101_mun <- map(seq_along(lau_et01_tcd), function(x){
+                        lau_et01_tcd[[x]] %>%
+                          bind_rows() %>%
+                          filter(DEGURBA == 1) %>%
+                          group_by(LAU_NAME, GISCO_ID) %>%
+                          summarise("Average tree canopy cover density (%)" = round2(stats:::weighted.mean(mean, area_m2, na.rm =TRUE), digits = 2),
+                                    `Accounting period` = unique(`Accounting period`)) %>%
+                            relocate(LAU_NAME, .after = GISCO_ID) %>%
+                            rename("Accounting area (municipality name)"= LAU_NAME,
+                                   "Accounting area (municipality number)"= GISCO_ID) }) 
+  
+tccd_101_mun <- tccd_101_mun %>%
+                  bind_rows() %>%
+                  mutate(`Indicator` = "Tree canopy cover density in urban areas",
+                         ID = "TCCD_101",
+                         .before = `Accounting area (municipality number)`) %>%
+                  relocate(`Accounting period`, .after = `Accounting area (municipality name)`)
+                  
+## Clean the R environment
+rm(list = setdiff(ls(), 
+                  c("pull",
+                    "conn_tcd",
+                    "file_tcd",
+                    "lau_et04_tcd",
+                    "lau_et01_tcd",
+                    "lau_1_tcd",
+                    "tccd_001_nat",
+                    "tccd_001_mun",
+                    "tccd_100_nat",
+                    "tccd_100_mun",
+                    "tccd_101_nat",
+                    "tccd_101_mun")))
+```
+
+```{r}
+#| eval: false
+#| code-summary: "Compile TCCD_102"
+
+## TCCD national level - area-weighted mean
+tccd_102_nat <- map(seq_along(lau_et01_tcd), function(x){
+                      lau_et01_tcd[[x]] %>%
+                        bind_rows() %>%
+                        filter(DEGURBA == 2) %>%
+                        summarise("Average tree canopy cover density (%)" = round2(stats:::weighted.mean(mean, area_m2, na.rm =TRUE), digits = 2),
+                                  `Accounting period` = unique(`Accounting period`))}) 
+
+tccd_102_nat <- tccd_102_nat %>%
+                  bind_rows() %>%
+                  mutate(`Indicator` = "Tree canopy cover density in urban areas",
+                         ID = "TCCD_102",
+                         `Accounting area` = "Norway",
+                         .before = `Average tree canopy cover density (%)`) %>%
+                  relocate(`Accounting period`, .after = `Accounting area`)
+  
+  
+
+## TCCD municipal level
+tccd_102_mun <- map(seq_along(lau_et01_tcd), function(x){
+                        lau_et01_tcd[[x]] %>%
+                          bind_rows() %>%
+                          filter(DEGURBA == 2) %>%
+                          group_by(LAU_NAME, GISCO_ID) %>%
+                          summarise("Average tree canopy cover density (%)" = round2(stats:::weighted.mean(mean, area_m2, na.rm =TRUE), digits = 2),
+                                    `Accounting period` = unique(`Accounting period`)) %>%
+                            relocate(LAU_NAME, .after = GISCO_ID) %>%
+                            rename("Accounting area (municipality name)"= LAU_NAME,
+                                   "Accounting area (municipality number)"= GISCO_ID) }) 
+  
+tccd_102_mun <- tccd_102_mun %>%
+                  bind_rows() %>%
+                  mutate(`Indicator` = "Tree canopy cover density in urban areas",
+                         ID = "TCCD_102",
+                         .before = `Accounting area (municipality number)`) %>%
+                  relocate(`Accounting period`, .after = `Accounting area (municipality name)`)
+                  
+## Clean the R environment
+rm(list = setdiff(ls(), 
+                  c("pull",
+                    "conn_tcd",
+                    "file_tcd",
+                    "lau_et04_tcd",
+                    "lau_et01_tcd",
+                    "lau_1_tcd",
+                    "tccd_001_nat",
+                    "tccd_001_mun",
+                    "tccd_100_nat",
+                    "tccd_100_mun",
+                    "tccd_101_nat",
+                    "tccd_101_mun",
+                    "tccd_102_nat",
+                    "tccd_102_mun")))
+```
+
+```{r}
+#| eval: false
+#| code-summary: "Compile TCCD_103"
+
+## TCCD national level - area-weighted mean
+tccd_103_nat <- map(seq_along(lau_et01_tcd), function(x){
+                      lau_et01_tcd[[x]] %>%
+                        bind_rows() %>%
+                        filter(DEGURBA == 3) %>%
+                        summarise("Average tree canopy cover density (%)" = round2(stats:::weighted.mean(mean, area_m2, na.rm =TRUE), digits = 2),
+                                  `Accounting period` = unique(`Accounting period`))}) 
+
+tccd_103_nat <- tccd_103_nat %>%
+                  bind_rows() %>%
+                  mutate(`Indicator` = "Tree canopy cover density in urban areas",
+                         ID = "TCCD_103",
+                         `Accounting area` = "Norway",
+                         .before = `Average tree canopy cover density (%)`) %>%
+                  relocate(`Accounting period`, .after = `Accounting area`)
+  
+  
+
+## TCCD municipal level
+tccd_103_mun <- map(seq_along(lau_et01_tcd), function(x){
+                        lau_et01_tcd[[x]] %>%
+                          bind_rows() %>%
+                          filter(DEGURBA == 3) %>%
+                          group_by(LAU_NAME, GISCO_ID) %>%
+                          summarise("Average tree canopy cover density (%)" = round2(stats:::weighted.mean(mean, area_m2, na.rm =TRUE), digits = 2),
+                                    `Accounting period` = unique(`Accounting period`)) %>%
+                            relocate(LAU_NAME, .after = GISCO_ID) %>%
+                            rename("Accounting area (municipality name)"= LAU_NAME,
+                                   "Accounting area (municipality number)"= GISCO_ID) }) 
+  
+tccd_103_mun <- tccd_103_mun %>%
+                  bind_rows() %>%
+                  mutate(`Indicator` = "Tree canopy cover density in urban areas",
+                         ID = "TCCD_103",
+                         .before = `Accounting area (municipality number)`) %>%
+                  relocate(`Accounting period`, .after = `Accounting area (municipality name)`)
+                  
+## Clean the R environment
+rm(list = setdiff(ls(), 
+                  c("pull",
+                    "conn_tcd",
+                    "file_tcd",
+                    "lau_et04_tcd",
+                    "lau_et01_tcd",
+                    "lau_1_tcd",
+                    "tccd_001_nat",
+                    "tccd_001_mun",
+                    "tccd_100_nat",
+                    "tccd_100_mun",
+                    "tccd_101_nat",
+                    "tccd_101_mun",
+                    "tccd_102_nat",
+                    "tccd_102_mun",
+                    "tccd_103_nat",
+                    "tccd_103_mun")))
+```
+
+
+```{r}
+#| eval: false
+#| code-summary: "Compile TCCD_104"
+
+## TCCD national level - area-weighted mean
+tccd_104_nat <- map(seq_along(lau_et01_tcd), function(x){
+                      lau_et01_tcd[[x]] %>%
+                        bind_rows() %>%
+                        summarise("Average tree canopy cover density (%)" = round2(stats:::weighted.mean(mean, area_m2, na.rm =TRUE), digits = 2),
+                                  `Accounting period` = unique(`Accounting period`))}) 
+
+tccd_104_nat <- tccd_104_nat %>%
+                  bind_rows() %>%
+                  mutate(`Indicator` = "Tree canopy cover density in urban areas",
+                         ID = "TCCD_104",
+                         `Accounting area` = "Norway",
+                         .before = `Average tree canopy cover density (%)`) %>%
+                  relocate(`Accounting period`, .after = `Accounting area`)
+  
+                  
+## Clean the R environment
+rm(list = setdiff(ls(), 
+                  c("pull",
+                    "conn_tcd",
+                    "file_tcd",
+                    "lau_et04_tcd",
+                    "lau_et01_tcd",
+                    "lau_1_tcd",
+                    "tccd_001_nat",
+                    "tccd_001_mun",
+                    "tccd_100_nat",
+                    "tccd_100_mun",
+                    "tccd_101_nat",
+                    "tccd_101_mun",
+                    "tccd_102_nat",
+                    "tccd_102_mun",
+                    "tccd_103_nat",
+                    "tccd_103_mun",
+                    "tccd_104_nat")))
+```
+
+
+
+
+
+
 ### Paths to data sources
 Before starting any of the analyses, we store the path in which the data will be found. If readers wish to download the data and run this code, they can just change the paths below to their local paths for the rest of the code to function. Note: most of the data used in this script are big and required pre-processing. Some of them could be requested through API but others could not. We chose to make the code available for API requests and pre-processing here but could not make the data directly available due to their large size. 
 
@@ -1596,6 +2275,7 @@ datatable(res_national)
 ```
 
 ### Municipality level
+Træna and Røst are missing rom TCCD_001.
 ```{r}
 #| eval: true
 #| message: false
