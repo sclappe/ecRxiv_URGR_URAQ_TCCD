@@ -1497,11 +1497,7 @@ res_municipal <- bind_rows(tccd_001_mun,
 ddbs_stop_conn(conn_tcd)
 
 # Clean R environment
-rm(list = setdiff(ls(), 
-                  c("pull",
-                    "conn_tcd",
-                    "res_national",
-                    "res_municipal")))
+rm(list = ls())
 
 # Show table
 datatable(res_municipal, filter = "top") %>%
