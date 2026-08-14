@@ -443,11 +443,15 @@ path_tcd_list <- dir(path_tcd, recursive = FALSE, full.names = TRUE)
 yrs_tcd <- str_sub(path_tcd_list, start = -4)
 file_tcd <- map_vec(seq_along(path_tcd_list), function(i){paste0(path_tcd_list[i], "/TCD_", yrs_tcd[i], ".tif")})
 
+# Set target CRS
+tcd_crs <- st_crs(file_tcd[1])
+
 ## Clean the R environment
 rm(list = setdiff(ls(), 
                   c("pull",
                     "conn_tcd",
-                    "file_tcd")))
+                    "file_tcd",
+                    "tcd_crs")))
 
 ```
 
@@ -491,8 +495,7 @@ ddbs_list_tables(conn_tcd)
 # Transform into IMD CRS
 tables <- dbListTables(conn_tcd)
 tbl_list <- keep(tables, startsWith(tables, "gk_et014"))
-                   
-tcd_crs <- rast(file_tcd[1]) %>% st_crs()
+
 
 walk(tbl_list, function(tbl){
   
@@ -589,7 +592,8 @@ ddbs_list_tables(conn_tcd)
 rm(list = setdiff(ls(), 
                   c("pull",
                     "conn_tcd",
-                    "file_tcd")))
+                    "file_tcd",
+                    "tcd_crs")))
 ```
 
 
@@ -641,7 +645,7 @@ lau_dgurb <- inner_join(lau_no,
               st_as_sf()
 
 # Re-project in the CRS of IMD data and store in duckdb database
-st_transform(lau_dgurb, crs = crs(rast(file_tcd[[1]]))) %>%
+st_transform(lau_dgurb, crs = tcd_crs) %>%
       ddbs_make_valid(conn = conn_tcd,
                       "cln_lau",
                       overwrite = TRUE)
@@ -673,7 +677,8 @@ ddbs_list_tables(conn_tcd)
 rm(list = setdiff(ls(), 
                   c("pull",
                     "conn_tcd",
-                    "file_tcd")))
+                    "file_tcd",
+                    "tcd_crs")))
 
 ```
 
@@ -831,7 +836,8 @@ for (tbl in tables) {
 rm(list = setdiff(ls(), 
                   c("pull",
                     "conn_tcd",
-                    "file_tcd")))
+                    "file_tcd",
+                    "tcd_crs")))
 
 ```
 
@@ -915,6 +921,7 @@ rm(list = setdiff(ls(),
                   c("pull",
                     "conn_tcd",
                     "file_tcd",
+                    "tcd_crs",
                     "lau_et04_tcd")))
 
 ```
@@ -999,6 +1006,7 @@ rm(list = setdiff(ls(),
                   c("pull",
                     "conn_tcd",
                     "file_tcd",
+                    "tcd_crs",
                     "lau_et04_tcd",
                     "lau_et01_tcd")))
 
@@ -1077,6 +1085,7 @@ rm(list = setdiff(ls(),
                   c("pull",
                     "conn_tcd",
                     "file_tcd",
+                    "tcd_crs",
                     "lau_et04_tcd",
                     "lau_et01_tcd",
                     "lau_1_tcd")))
@@ -1134,6 +1143,7 @@ rm(list = setdiff(ls(),
                   c("pull",
                     "conn_tcd",
                     "file_tcd",
+                    "tcd_crs",
                     "lau_et04_tcd",
                     "lau_et01_tcd",
                     "lau_1_tcd",
