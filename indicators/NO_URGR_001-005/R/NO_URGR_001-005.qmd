@@ -418,13 +418,17 @@ We have three years and 159 rasters to load, we first create a list of files bef
 path_imd <- "/data/P-Prosjekter2/412413_2023_no_egd/git_data/IMD_Copernicus"
 path_imd_list <- dir(path_imd, recursive = FALSE, full.names = TRUE)
 yrs_imd <- str_sub(path_imd_list, start = -4)
-file_imd <- map_vec(seq_along(path_imd_list), function(i){paste0(path_imd_list[i], "/IMD_", yrs_imd[i], ".vrt")})
+file_imd <- map_vec(seq_along(path_imd_list), function(i){paste0(path_imd_list[i], "/IMD_", yrs_imd[i], ".tif")})
+
+# Set target CRS
+imd_crs <- st_crs(rast(file_imd[1]))
 
 ## Clean the R environment
 rm(list = setdiff(ls(), 
                   c("pull",
                     "conn_ug",
-                    "imd_data")))
+                    "file_imd",
+                    "imd_crs")))
 
 ```
 
@@ -465,7 +469,7 @@ ddbs_list_tables(conn_ug)
 # Transform into IMD CRS
 tbl_list <- dbListTables(conn_ug)
                    
-imd_crs <- st_crs(imd_data[[1]])
+imd_crs <- st_crs(file_imd[1])
 
 walk(tbl_list, function(tbl){
   
@@ -562,7 +566,8 @@ ddbs_list_tables(conn_ug)
 
 # Clean the R environment
 rm(list = setdiff(ls(), 
-                  c("imd_data",
+                  c("file_imd",
+                    "imd_crs",
                     "pull",
                     "conn_ug")))
 ```
@@ -598,7 +603,7 @@ ddbs_list_tables(conn_ug)
 tables <- dbListTables(conn_ug)
 tbl_list <- keep(tables, startsWith(tables, "gk_et01"))
                    
-imd_crs <- st_crs(imd_data[[1]])
+imd_crs <- st_crs(file_imd[1])
 
 walk(tbl_list, function(tbl){
   
@@ -694,7 +699,8 @@ ddbs_list_tables(conn_ug)
 
 # Clean the R environment
 rm(list = setdiff(ls(), 
-                  c("imd_data",
+                  c("file_imd",
+                    "imd_crs",
                     "pull",
                     "conn_ug")))
 ```
@@ -740,7 +746,7 @@ x))
 # Project to IMD CRS, Clean slivers, make valid, union
 tbl_list <- paste0("gk_urb_green_features_", str_extract(gdb_files, "(?<=format/).{2}"))
                    
-imd_crs <- st_crs(imd_data[[1]])
+imd_crs <- st_crs(file_imd[1])
 
 walk(tbl_list, function(tbl){
   
@@ -824,7 +830,8 @@ ddbs_list_tables(conn_ug)
 
 # Clean the R environment
 rm(list = setdiff(ls(), 
-                  c("imd_data",
+                  c("file_imd",
+                    "imd_crs",
                     "pull",
                     "conn_ug")))
 
@@ -879,7 +886,7 @@ lau_dgurb <- inner_join(lau_no,
               st_as_sf()
 
 # Re-project in the CRS of IMD data and store in duckdb database
-st_transform(lau_dgurb, crs = crs(imd_data[[1]])) %>%
+st_transform(lau_dgurb, crs = crs(file_imd[1])) %>%
       ddbs_make_valid(conn = conn_ug,
                       "cln_lau",
                       overwrite = TRUE)
@@ -909,7 +916,8 @@ ddbs_list_tables(conn_ug)
 
 ## Clean the R environment
 rm(list = setdiff(ls(), 
-                  c("imd_data",
+                  c("file_imd",
+                    "imd_crs",
                     "pull",
                     "conn_ug")))
 
@@ -1057,7 +1065,8 @@ for (tbl in tables) {
 
 ## Clean the R environment
 rm(list = setdiff(ls(), 
-                  c("imd_data",
+                  c("file_imd",
+                    "imd_crs",
                     "pull",
                     "conn_ug")))
 
@@ -1087,13 +1096,6 @@ lau_et01_all <- map(tables, function(tbl) {
 fylke_nb <- dbGetQuery(conn_ug, "SELECT DISTINCT Fylke_nummer FROM cln_lau") %>%
               unname() %>%
               unlist()
-
-## Path to IMD virtual rasters 
-path_imd <- "/data/P-Prosjekter2/412413_2023_no_egd/git_data/IMD_Copernicus"
-path_imd_list <- dir(path_imd, recursive = FALSE, full.names = TRUE)
-yrs_imd <- str_sub(path_imd_list, start = -4)
-file_imd <- map_vec(seq_along(path_imd_list), function(i){paste0(path_imd_list[i], "/IMD_", yrs_imd[i], ".vrt")})
-
 
 ## Retrieve IMD per year and fylke
 daemons(5)
@@ -1143,7 +1145,8 @@ daemons(0)
 rm(list = setdiff(ls(), 
                   c("pull",
                     "conn_ug",
-                    "imd_data",
+                    "file_imd",
+                    "imd_crs",
                     "lau_et01_all",
                     "lau_et01_imd")))
 
@@ -1161,15 +1164,16 @@ urgr_001_nat <- map(seq_along(lau_et01_imd), function(x){
                         bind_rows() %>%
                         filter(DEGURBA == 1) %>%
                         mutate(non_imp = 100 - mean) %>%
-                        summarise("Share of urban green/blue spaces (%)" = round2(stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE), digits = 2))}) 
+                        summarise("Share of urban green/blue spaces (%)" = round2(stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE), digits = 2),
+                                  `Accounting period` = unique(`Accounting period`))}) 
 
 urgr_001_nat <- urgr_001_nat %>%
                   bind_rows() %>%
                   mutate(`Indicator` = "Urban green areas",
                          ID = "URGR_001",
                          `Accounting area` = "Norway",
-                         `Accounting period` = as.numeric(names(imd_data)),
-                         .before = `Share of urban green/blue spaces (%)`)
+                         .before = `Share of urban green/blue spaces (%)`) %>%
+                  relocate(`Accounting period`, .after = `Accounting area`)
   
   
 
@@ -1180,7 +1184,8 @@ urgr_001_mun <- map(seq_along(lau_et01_imd), function(x){
                           filter(DEGURBA == 1) %>%
                           mutate(non_imp = 100 - mean) %>%
                           group_by(LAU_NAME, GISCO_ID) %>%
-                          summarise("Share of urban green/blue spaces (%)" = round2(stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE), digits = 2)) %>%
+                          summarise("Share of urban green/blue spaces (%)" = round2(stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE), digits = 2),
+                                    `Accounting period` = unique(`Accounting period`)) %>%
                           relocate(LAU_NAME, .after = GISCO_ID) %>%
                           rename("Accounting area (municipality name)"= LAU_NAME,
                                  "Accounting area (municipality number)"= GISCO_ID) }) 
@@ -1190,14 +1195,14 @@ urgr_001_mun <- urgr_001_mun %>%
                   mutate(`Indicator` = "Urban green areas",
                          ID = "URGR_001",
                          .before = `Accounting area (municipality number)`) %>%
-                  mutate(`Accounting period` = as.numeric(names(imd_data)),
-                         .before = `Share of urban green/blue spaces (%)`)
+                  relocate(`Accounting period`, .after = `Accounting area (municipality name)`)
                   
 ## Clean the R environment
 rm(list = setdiff(ls(), 
                   c("pull",
                     "conn_ug",
-                    "imd_data",
+                    "file_imd",
+                    "imd_crs",
                     "lau_et01_all",
                     "lau_et01_imd",
                     "urgr_001_nat",
@@ -1214,15 +1219,16 @@ urgr_002_nat <- map(seq_along(lau_et01_imd), function(x){
                         bind_rows() %>%
                         filter(DEGURBA == 2) %>%
                         mutate(non_imp = 100 - mean) %>%
-                        summarise("Share of urban green/blue spaces (%)" = round2(stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE), digits = 2))}) 
+                        summarise("Share of urban green/blue spaces (%)" = round2(stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE), digits = 2),
+                                  `Accounting period` = unique(`Accounting period`))}) 
 
 urgr_002_nat <- urgr_002_nat %>%
                   bind_rows() %>%
                   mutate(`Indicator` = "Urban green areas",
                          ID = "URGR_002",
                          `Accounting area` = "Norway",
-                         `Accounting period` = as.numeric(names(imd_data)),
-                         .before = `Share of urban green/blue spaces (%)`)
+                         .before = `Share of urban green/blue spaces (%)`) %>%
+                  relocate(`Accounting period`, .after = `Accounting area`)
   
   
 
@@ -1233,7 +1239,8 @@ urgr_002_mun <- map(seq_along(lau_et01_imd), function(x){
                           filter(DEGURBA == 2) %>%
                           mutate(non_imp = 100 - mean) %>%
                           group_by(LAU_NAME, GISCO_ID) %>%
-                          summarise("Share of urban green/blue spaces (%)" = round2(stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE), digits = 2)) %>%
+                          summarise("Share of urban green/blue spaces (%)" = round2(stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE), digits = 2),
+                                    `Accounting period` = unique(`Accounting period`)) %>%
                           relocate(LAU_NAME, .after = GISCO_ID) %>%
                           rename("Accounting area (municipality name)"= LAU_NAME,
                                  "Accounting area (municipality number)"= GISCO_ID) }) 
@@ -1243,14 +1250,13 @@ urgr_002_mun <- urgr_002_mun %>%
                   mutate(`Indicator` = "Urban green areas",
                          ID = "URGR_002",
                          .before = `Accounting area (municipality number)`) %>%
-                  mutate(`Accounting period` = as.numeric(names(imd_data)),
-                         .before = `Share of urban green/blue spaces (%)`)
+                  relocate(`Accounting period`, .after = `Accounting area (municipality name)`)
                   
 ## Clean the R environment
 rm(list = setdiff(ls(), 
                   c("pull",
                     "conn_ug",
-                    "imd_data",
+                    "file_imd",
                     "lau_et01_all",
                     "lau_et01_imd",
                     "urgr_001_nat",
@@ -1269,15 +1275,16 @@ urgr_003_nat <- map(seq_along(lau_et01_imd), function(x){
                         bind_rows() %>%
                         filter(DEGURBA == 3) %>%
                         mutate(non_imp = 100 - mean) %>%
-                        summarise("Share of urban green/blue spaces (%)" = round2(stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE), digits = 2))}) 
+                        summarise("Share of urban green/blue spaces (%)" = round2(stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE), digits = 2),
+                                    `Accounting period` = unique(`Accounting period`))}) 
 
 urgr_003_nat <- urgr_003_nat %>%
                   bind_rows() %>%
                   mutate(`Indicator` = "Urban green areas",
                          ID = "URGR_003",
                          `Accounting area` = "Norway",
-                         `Accounting period` = as.numeric(names(imd_data)),
-                         .before = `Share of urban green/blue spaces (%)`)
+                         .before = `Share of urban green/blue spaces (%)`) %>%
+                  relocate(`Accounting period`, .after = `Accounting area`)
   
   
 
@@ -1288,7 +1295,8 @@ urgr_003_mun <- map(seq_along(lau_et01_imd), function(x){
                           filter(DEGURBA == 3) %>%
                           mutate(non_imp = 100 - mean) %>%
                           group_by(LAU_NAME, GISCO_ID) %>%
-                          summarise("Share of urban green/blue spaces (%)" = round2(stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE), digits = 2)) %>%
+                          summarise("Share of urban green/blue spaces (%)" = round2(stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE), digits = 2),
+                                    `Accounting period` = unique(`Accounting period`)) %>%
                           relocate(LAU_NAME, .after = GISCO_ID) %>%
                           rename("Accounting area (municipality name)"= LAU_NAME,
                                  "Accounting area (municipality number)"= GISCO_ID) }) 
@@ -1298,14 +1306,13 @@ urgr_003_mun <- urgr_003_mun %>%
                   mutate(`Indicator` = "Urban green areas",
                          ID = "URGR_003",
                          .before = `Accounting area (municipality number)`) %>%
-                  mutate(`Accounting period` = as.numeric(names(imd_data)),
-                         .before = `Share of urban green/blue spaces (%)`)
+                  relocate(`Accounting period`, .after = `Accounting area (municipality name)`)
                   
 ## Clean the R environment
 rm(list = setdiff(ls(), 
                   c("pull",
                     "conn_ug",
-                    "imd_data",
+                    "file_imd",
                     "lau_et01_all",
                     "lau_et01_imd",
                     "urgr_001_nat",
@@ -1325,22 +1332,23 @@ urgr_004_nat <- map(seq_along(lau_et01_imd), function(x){
                       lau_et01_imd[[x]] %>%
                       bind_rows() %>%
                       mutate(non_imp = 100 - mean) %>%
-                      summarise("Share of urban green/blue spaces (%)" = round2(stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE), digits = 2))}) 
+                      summarise("Share of urban green/blue spaces (%)" = round2(stats:::weighted.mean(non_imp, area_m2, na.rm =TRUE), digits = 2),
+                                    `Accounting period` = unique(`Accounting period`))}) 
 
 urgr_004_nat <- urgr_004_nat %>%
                   bind_rows() %>%
                   mutate(`Indicator` = "Urban green areas",
                          ID = "URGR_004",
                          `Accounting area` = "Norway",
-                         `Accounting period` = as.numeric(names(imd_data)),
-                         .before = `Share of urban green/blue spaces (%)`)
+                         .before = `Share of urban green/blue spaces (%)`) %>%
+                  relocate(`Accounting period`, .after = `Accounting area`)
        
                   
 ## Clean the R environment
 rm(list = setdiff(ls(), 
                   c("pull",
                     "conn_ug",
-                    "imd_data",
+                    "file_imd",
                     "lau_et01_all",
                     "lau_et01_imd",
                     "urgr_001_nat",
@@ -1390,7 +1398,7 @@ lau_urgr5 <- rbind(lau_1, lau_2_adj) %>%
 rm(list = setdiff(ls(), 
                   c("pull",
                     "conn_ug",
-                    "imd_data",
+                    "file_imd",
                     "lau_et01_all",
                     "lau_et01_imd",
                     "urgr_001_nat",
@@ -1501,7 +1509,7 @@ for (tbl in tables) {
 rm(list = setdiff(ls(), 
                   c("pull",
                     "conn_ug",
-                    "imd_data",
+                    "file_imd",
                     "lau_et01_all",
                     "lau_et01_imd",
                     "urgr_001_nat",
@@ -1612,7 +1620,7 @@ for (tbl in tables) {
 rm(list = setdiff(ls(), 
                   c("pull",
                     "conn_ug",
-                    "imd_data",
+                    "file_imd",
                     "lau_et01_all",
                     "lau_et01_imd",
                     "urgr_001_nat",
