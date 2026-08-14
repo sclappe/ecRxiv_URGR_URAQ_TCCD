@@ -468,8 +468,6 @@ ddbs_list_tables(conn_ug)
 
 # Transform into IMD CRS
 tbl_list <- dbListTables(conn_ug)
-                   
-imd_crs <- st_crs(file_imd[1])
 
 walk(tbl_list, function(tbl){
   
@@ -602,8 +600,6 @@ ddbs_list_tables(conn_ug)
 # Transform into IMD CRS
 tables <- dbListTables(conn_ug)
 tbl_list <- keep(tables, startsWith(tables, "gk_et01"))
-                   
-imd_crs <- st_crs(file_imd[1])
 
 walk(tbl_list, function(tbl){
   
@@ -745,8 +741,6 @@ x))
 
 # Project to IMD CRS, Clean slivers, make valid, union
 tbl_list <- paste0("gk_urb_green_features_", str_extract(gdb_files, "(?<=format/).{2}"))
-                   
-imd_crs <- st_crs(file_imd[1])
 
 walk(tbl_list, function(tbl){
   
@@ -886,7 +880,7 @@ lau_dgurb <- inner_join(lau_no,
               st_as_sf()
 
 # Re-project in the CRS of IMD data and store in duckdb database
-st_transform(lau_dgurb, crs = crs(file_imd[1])) %>%
+st_transform(lau_dgurb, crs = imd_crs) %>%
       ddbs_make_valid(conn = conn_ug,
                       "cln_lau",
                       overwrite = TRUE)
