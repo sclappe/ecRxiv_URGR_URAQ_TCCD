@@ -426,7 +426,7 @@ We downloaded, cleaned and formatted the data prior to compiling URGR indicators
 ```{r}
 #| eval: false
 #| code-summary: "Create a DuckDB connection"
-conn_tcd <- ddbs_create_conn(dbdir = paste0(str_remove(tempdir(), "Rtmp\\w*"), "duckdb_conn/duckspatial37a19edb6de66.duckdb"), threads = 10, memory_limit_gb = 30)
+conn_tcd <- ddbs_create_conn(dbdir = "tempdir", threads = 10, memory_limit_gb = 30)
 
 ```
 
@@ -441,7 +441,7 @@ We just load the virtual rasters we created for the years 2018 to 2021. These vi
 path_tcd <- "/data/P-Prosjekter2/412413_2023_no_egd/git_data/TCD_Copernicus"
 path_tcd_list <- dir(path_tcd, recursive = FALSE, full.names = TRUE)
 yrs_tcd <- str_sub(path_tcd_list, start = -4)
-file_tcd <- map_vec(seq_along(path_tcd_list), function(i){paste0(path_tcd_list[i], "/TCD_", yrs_tcd[i], ".vrt")})
+file_tcd <- map_vec(seq_along(path_tcd_list), function(i){paste0(path_tcd_list[i], "/TCD_", yrs_tcd[i], ".tif")})
 
 ## Clean the R environment
 rm(list = setdiff(ls(), 
